@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, send_from_directory
 from sqlalchemy import text
 from models import db, Amiibo, Match
 import random
@@ -17,6 +17,11 @@ with app.app_context():
     except Exception:
         db.session.execute(text('ALTER TABLE amiibo ADD COLUMN waiting BOOLEAN DEFAULT 0'))
         db.session.commit()
+
+@app.route('/logo/<path:filename>')
+def serve_logo(filename):
+    """Serve images from the logo directory."""
+    return send_from_directory('logo', filename)
 
 # Simple ELO update function
 K = 32
