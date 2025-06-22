@@ -17,6 +17,12 @@ with app.app_context():
     except Exception:
         db.session.execute(text('ALTER TABLE amiibo ADD COLUMN waiting BOOLEAN DEFAULT 0'))
         db.session.commit()
+    # ensure the 'draw' column exists in matches
+    try:
+        db.session.execute(text('SELECT draw FROM match LIMIT 1'))
+    except Exception:
+        db.session.execute(text('ALTER TABLE match ADD COLUMN draw BOOLEAN DEFAULT 0'))
+        db.session.commit()
 
 @app.route('/logo/<path:filename>')
 def serve_logo(filename):
@@ -26,14 +32,15 @@ def serve_logo(filename):
 # Simple ELO update function
 K = 32
 
-def update_elo(winner: Amiibo, loser: Amiibo):
-    expected_win = 1 / (1 + 10 ** ((loser.current_elo - winner.current_elo)/400))
-    winner.current_elo += int(K * (1 - expected_win))
-    loser.current_elo += int(K * (0 - (1 - expected_win)))
-    if winner.current_elo > winner.peak_elo:
-        winner.peak_elo = winner.current_elo
-    if loser.current_elo > loser.peak_elo:
-        loser.peak_elo = loser.current_elo
+def update_elo(player1: Amiibo, player2: Amiibo, score1: float):
+    """Update ratings given score for player1 (1=win, 0=loss, 0.5=draw)."""
+    expected1 = 1 / (1 + 10 ** ((player2.current_elo - player1.current_elo) / 400))
+    expected2 = 1 - expected1
+    player1.current_elo += int(K * (score1 - expected1))
+    player2.current_elo += int(K * ((1 - score1) - expected2))
+    for p in (player1, player2):
+        if p.current_elo > p.peak_elo:
+            p.peak_elo = p.current_elo
 
 def generate_swiss_pairs(players, previous_matches):
     """Pair players for a Swiss round avoiding rematches."""
@@ -63,8 +70,9 @@ def index():
 
 @app.route('/leaderboard', methods=['GET'])
 def leaderboard():
+    last = request.args.get('last', type=int)
     amiibos = Amiibo.query.order_by(Amiibo.current_elo.desc()).all()
-    return render_template('leaderboard.html', amiibos=amiibos)
+    return render_template('leaderboard.html', amiibos=amiibos, last=last)
 
 @app.route('/add_amiibo', methods=['POST'])
 def add_amiibo():
@@ -106,7 +114,11 @@ def league_cycle_running() -> bool:
 
 @app.route('/tournament', methods=['GET'])
 def tournament():
-    pairs = [(Amiibo.query.get(p1), Amiibo.query.get(p2), Amiibo.query.get(w) if w else None) for p1, p2, w in current_pairs]
+    def resolve(w):
+        if w == 'draw':
+            return 'Draw'
+        return Amiibo.query.get(w) if w else None
+    pairs = [(Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w)) for p1, p2, w in current_pairs]
     return render_template('tournament.html', pairs=pairs)
 
 @app.route('/start_tournament', methods=['POST'])
@@ -125,22 +137,34 @@ def report_result():
     global current_pairs
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
-    winner = int(request.form['winner'])
+    res = request.form['winner']
     a1 = Amiibo.query.get(p1)
     a2 = Amiibo.query.get(p2)
-    win_obj = a1 if winner == p1 else a2
-    lose_obj = a2 if winner == p1 else a1
-    update_elo(win_obj, lose_obj)
-    match = Match(player1_id=p1, player2_id=p2, winner_id=winner)
+    if res == 'draw':
+        update_elo(a1, a2, 0.5)
+        winner_id = None
+        draw = True
+    else:
+        winner = int(res)
+        score = 1 if winner == p1 else 0
+        update_elo(a1, a2, score)
+        winner_id = winner
+        draw = False
+    match = Match(player1_id=p1, player2_id=p2, winner_id=winner_id, draw=draw)
     db.session.add(match)
     db.session.commit()
-    current_pairs = [ (pp1, pp2, w if (pp1, pp2) != (p1, p2) else winner) for pp1, pp2, w in current_pairs]
+    result_flag = 'draw' if draw else winner_id
+    current_pairs = [ (pp1, pp2, w if (pp1, pp2) != (p1, p2) else result_flag) for pp1, pp2, w in current_pairs]
     return redirect('/tournament')
 
 
 @app.route('/swiss', methods=['GET'])
 def swiss():
-    pairs = [(Amiibo.query.get(p1), Amiibo.query.get(p2), Amiibo.query.get(w) if w else None) for p1, p2, w in current_swiss_pairs]
+    def resolve(w):
+        if w == 'draw':
+            return 'Draw'
+        return Amiibo.query.get(w) if w else None
+    pairs = [(Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w)) for p1, p2, w in current_swiss_pairs]
     players = Amiibo.query.all()
     ordered = sorted(players, key=lambda a: swiss_scores.get(a.id, 0), reverse=True)
     done = swiss_round > 4
@@ -164,18 +188,28 @@ def report_swiss_result():
     global current_swiss_pairs, swiss_scores, swiss_round, swiss_previous_matches
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
-    winner = int(request.form['winner'])
+    res = request.form['winner']
     a1 = Amiibo.query.get(p1)
     a2 = Amiibo.query.get(p2)
-    win_obj = a1 if winner == p1 else a2
-    lose_obj = a2 if winner == p1 else a1
-    update_elo(win_obj, lose_obj)
-    match = Match(player1_id=p1, player2_id=p2, winner_id=winner, round_no=swiss_round)
+    if res == 'draw':
+        update_elo(a1, a2, 0.5)
+        winner_id = None
+        draw = True
+        swiss_scores[p1] += 0.5
+        swiss_scores[p2] += 0.5
+    else:
+        winner = int(res)
+        score = 1 if winner == p1 else 0
+        update_elo(a1, a2, score)
+        winner_id = winner
+        draw = False
+        swiss_scores[winner] += 1
+    match = Match(player1_id=p1, player2_id=p2, winner_id=winner_id, draw=draw, round_no=swiss_round)
     db.session.add(match)
     db.session.commit()
-    swiss_scores[winner] += 1
     swiss_previous_matches.add((p1, p2))
-    current_swiss_pairs = [ (pp1, pp2, w if (pp1, pp2) != (p1, p2) else winner) for pp1, pp2, w in current_swiss_pairs]
+    result_flag = 'draw' if draw else winner_id
+    current_swiss_pairs = [ (pp1, pp2, w if (pp1, pp2) != (p1, p2) else result_flag) for pp1, pp2, w in current_swiss_pairs]
 
     if all(w for _,_,w in current_swiss_pairs):
         if swiss_round >= 4:
@@ -215,8 +249,12 @@ def league():
     for lg in sorted(league_scores.keys()):
         players = [(Amiibo.query.get(pid), score) for pid, score in league_scores[lg].items()]
         players.sort(key=lambda x: x[1], reverse=True)
+        def resolve(w):
+            if w == 'draw':
+                return 'Draw'
+            return Amiibo.query.get(w) if w else None
         matches = [
-            (Amiibo.query.get(p1), Amiibo.query.get(p2), Amiibo.query.get(w) if w else None)
+            (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
             for p1, p2, w in league_matches.get(lg, [])
         ]
         displays.append((lg, players, matches))
@@ -228,20 +266,29 @@ def report_league_result():
     league = request.form['league']
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
-    winner = int(request.form['winner'])
+    res = request.form['winner']
     a1 = Amiibo.query.get(p1)
     a2 = Amiibo.query.get(p2)
-    win_obj = a1 if winner == p1 else a2
-    lose_obj = a2 if winner == p1 else a1
-    update_elo(win_obj, lose_obj)
+    if res == 'draw':
+        update_elo(a1, a2, 0.5)
+        winner_id = None
+        draw = True
+        league_scores[league][p1] += 0.5
+        league_scores[league][p2] += 0.5
+    else:
+        winner = int(res)
+        score = 1 if winner == p1 else 0
+        update_elo(a1, a2, score)
+        winner_id = winner
+        draw = False
+        league_scores[league][winner] += 1
     matches = league_matches.get(league, [])
     for idx, m in enumerate(matches):
         if (m[0], m[1]) == (p1, p2):
-            matches[idx] = (p1, p2, winner)
+            matches[idx] = (p1, p2, 'draw' if draw else winner_id)
             break
     league_matches[league] = matches
-    league_scores[league][winner] += 1
-    match = Match(player1_id=p1, player2_id=p2, winner_id=winner, round_no=swiss_round)
+    match = Match(player1_id=p1, player2_id=p2, winner_id=winner_id, draw=draw, round_no=swiss_round)
     db.session.add(match)
     db.session.commit()
     return redirect('/league')
@@ -321,7 +368,12 @@ def setup_knockouts():
         knockout_brackets[key] = pairs
 
 def advance_knockout(key):
-    winners = [m[2] for m in knockout_brackets[key] if m[2]]
+    winners = []
+    for m in knockout_brackets[key]:
+        if m[2] == 'draw':
+            return
+        if m[2]:
+            winners.append(m[2])
     if len(winners) * 2 != len(knockout_brackets[key]) * 2:
         return
     if len(winners) == 1:
@@ -355,7 +407,11 @@ def finish_league():
 def knockout():
     displays = {}
     for key, pairs in knockout_brackets.items():
-        pairs_disp = [(Amiibo.query.get(p1), Amiibo.query.get(p2), Amiibo.query.get(w) if w else None) for p1, p2, w in pairs]
+        def resolve(w):
+            if w == 'draw':
+                return 'Draw'
+            return Amiibo.query.get(w) if w else None
+        pairs_disp = [(Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w)) for p1, p2, w in pairs]
         winner = None
         if not pairs and knockout_remaining.get(key):
             winner = Amiibo.query.get(knockout_remaining[key][0])
@@ -367,16 +423,23 @@ def report_knockout_result():
     key = request.form['bracket']
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
-    winner = int(request.form['winner'])
+    res = request.form['winner']
     a1 = Amiibo.query.get(p1)
     a2 = Amiibo.query.get(p2)
-    win_obj = a1 if winner == p1 else a2
-    lose_obj = a2 if winner == p1 else a1
-    update_elo(win_obj, lose_obj)
+    if res == 'draw':
+        update_elo(a1, a2, 0.5)
+        winner_id = None
+        draw = True
+    else:
+        winner = int(res)
+        score = 1 if winner == p1 else 0
+        update_elo(a1, a2, score)
+        winner_id = winner
+        draw = False
     matches = knockout_brackets.get(key, [])
     for idx, m in enumerate(matches):
         if (m[0], m[1]) == (p1, p2):
-            matches[idx] = (p1, p2, winner)
+            matches[idx] = (p1, p2, 'draw' if draw else winner_id)
             break
     knockout_brackets[key] = matches
     db.session.commit()
