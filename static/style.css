@@ -1,19 +1,24 @@
 :root {
-    --bg-color: #f9f9f9;
-    --text-color: #333;
-    --link-color: #333;
-    --header-bg: #eee;
-    --border-color: #ccc;
+    /* Smash inspired color scheme */
+    --bg-color: #1b1b1b;
+    --text-color: #f4f4f4;
+    --link-color: #ffd200;
+    --header-bg: #2e2e2e;
+    --border-color: #555;
+    --accent-color: #d92323;
 }
 
 body {
     font-family: Arial, sans-serif;
-    margin: 2em;
-    background-color: var(--bg-color);
+    margin: 0;
+    background: var(--bg-color);
     color: var(--text-color);
 }
 
 nav {
+    background: #000;
+    border-bottom: 4px solid var(--accent-color);
+    padding: 0.5em 1em;
     margin-bottom: 1em;
 }
 
@@ -27,24 +32,32 @@ nav a {
     margin-right: 1em;
     text-decoration: none;
     color: var(--link-color);
+    font-weight: bold;
 }
 
 nav a:hover {
-    text-decoration: underline;
+    color: #fff;
 }
 
 button.theme-toggle {
     margin-left: 1em;
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+    padding: 0.25em 0.5em;
+    cursor: pointer;
 }
 
 table {
     border-collapse: collapse;
     width: 100%;
     margin-bottom: 1em;
+    background: #222;
 }
 
 th {
-    background-color: var(--header-bg);
+    background-color: var(--accent-color);
+    color: #fff;
 }
 
 table, th, td {
@@ -53,10 +66,34 @@ table, th, td {
     text-align: left;
 }
 
+button {
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+    padding: 0.25em 0.75em;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #b71d1d;
+}
+
+h1, h2, h3 {
+    font-family: Impact, sans-serif;
+    color: var(--link-color);
+    text-shadow: 2px 2px 0 #000;
+    margin-top: 0;
+    margin-bottom: 0.5em;
+}
+
+.content {
+    padding: 1em 2em;
+}
+
 body.dark-mode {
-    --bg-color: #121212;
+    --bg-color: #000;
     --text-color: #eee;
-    --link-color: #ddd;
-    --header-bg: #333;
-    --border-color: #555;
+    --link-color: #ffd200;
+    --header-bg: #222;
+    --border-color: #444;
 }
