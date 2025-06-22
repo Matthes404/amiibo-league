@@ -10,6 +10,12 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+    # ensure the 'waiting' column exists if database was created before
+    try:
+        db.session.execute('SELECT waiting FROM amiibo LIMIT 1')
+    except Exception:
+        db.session.execute('ALTER TABLE amiibo ADD COLUMN waiting BOOLEAN DEFAULT 0')
+        db.session.commit()
 
 # Simple ELO update function
 K = 32
@@ -57,7 +63,7 @@ def leaderboard():
 @app.route('/add_amiibo', methods=['POST'])
 def add_amiibo():
     name = request.form['name']
-    a = Amiibo(name=name)
+    a = Amiibo(name=name, waiting=league_cycle_running())
     db.session.add(a)
     db.session.commit()
     return redirect('/leaderboard')
@@ -71,6 +77,10 @@ league_matches = {}
 league_scores = {}
 knockout_brackets = {}
 knockout_remaining = {}
+
+def league_cycle_running() -> bool:
+    """Return True if Swiss, league or knockout is active."""
+    return swiss_round > 0 or bool(league_matches) or bool(knockout_brackets)
 
 @app.route('/tournament', methods=['GET'])
 def tournament():
@@ -215,7 +225,7 @@ def report_league_result():
     return redirect('/league')
 
 def promote_and_relegate():
-    players = Amiibo.query.all()
+    players = Amiibo.query.filter_by(waiting=False).all()
     groups = sorted(set(p.league for p in players))
     rankings = {}
     for g in groups:
@@ -243,7 +253,23 @@ def setup_league_matches():
     league_matches.clear()
     league_scores.clear()
     players = Amiibo.query.all()
-    groups = sorted(set(p.league for p in players))
+    groups = sorted(set(p.league for p in players if p.league))
+    if not groups:
+        groups = ['A']
+    last_group = groups[-1]
+    size = sum(1 for p in players if p.league == last_group and not p.waiting)
+    waiting = [p for p in players if p.waiting]
+    for w in waiting:
+        if size >= 4:
+            last_group = chr(ord(last_group) + 1)
+            groups.append(last_group)
+            size = 0
+        w.league = last_group
+        w.waiting = False
+        size += 1
+    db.session.commit()
+    players = Amiibo.query.all()
+    groups = sorted(set(p.league for p in players if p.league))
     for g in groups:
         pls = [p for p in players if p.league == g]
         league_scores[g] = {p.id: 0 for p in pls}
@@ -256,7 +282,7 @@ def setup_league_matches():
 def setup_knockouts():
     knockout_brackets.clear()
     knockout_remaining.clear()
-    players = Amiibo.query.all()
+    players = Amiibo.query.filter_by(waiting=False).all()
     groups = sorted(set(p.league for p in players))
     for i in range(0, len(groups), 2):
         if i+1 >= len(groups):
