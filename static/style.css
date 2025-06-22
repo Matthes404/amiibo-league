@@ -1,8 +1,16 @@
+:root {
+    --bg-color: #f9f9f9;
+    --text-color: #333;
+    --link-color: #333;
+    --header-bg: #eee;
+    --border-color: #ccc;
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 2em;
-    background-color: #f9f9f9;
-    color: #333;
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
 nav {
@@ -12,11 +20,15 @@ nav {
 nav a {
     margin-right: 1em;
     text-decoration: none;
-    color: #333;
+    color: var(--link-color);
 }
 
 nav a:hover {
     text-decoration: underline;
+}
+
+button.theme-toggle {
+    margin-left: 1em;
 }
 
 table {
@@ -26,11 +38,19 @@ table {
 }
 
 th {
-    background-color: #eee;
+    background-color: var(--header-bg);
 }
 
 table, th, td {
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     padding: 0.5em;
     text-align: left;
+}
+
+body.dark-mode {
+    --bg-color: #121212;
+    --text-color: #eee;
+    --link-color: #ddd;
+    --header-bg: #333;
+    --border-color: #555;
 }
