@@ -33,9 +33,36 @@ class Amiibo(db.Model):
             return "FM"
         return ""
 
+    def record(self, last_n: int | None = None) -> tuple[int, int, int]:
+        """Return (wins, draws, losses) optionally limited to last_n matches."""
+        query = Match.query.filter(
+            (Match.player1_id == self.id) | (Match.player2_id == self.id)
+        ).order_by(Match.id.desc())
+        if last_n:
+            matches = query.limit(last_n).all()
+        else:
+            matches = query.all()
+        wins = draws = losses = 0
+        for m in matches:
+            if m.draw:
+                draws += 1
+            elif m.winner_id == self.id:
+                wins += 1
+            else:
+                losses += 1
+        return wins, draws, losses
+
+    def win_percentage(self, last_n: int | None = None) -> float:
+        wins, draws, losses = self.record(last_n)
+        total = wins + draws + losses
+        if total == 0:
+            return 0.0
+        return round(((wins + 0.5 * draws) / total) * 100, 1)
+
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     player1_id = db.Column(db.Integer, db.ForeignKey('amiibo.id'))
     player2_id = db.Column(db.Integer, db.ForeignKey('amiibo.id'))
-    winner_id = db.Column(db.Integer, db.ForeignKey('amiibo.id'))
+    winner_id = db.Column(db.Integer, db.ForeignKey('amiibo.id'), nullable=True)
+    draw = db.Column(db.Boolean, default=False)
     round_no = db.Column(db.Integer, default=1)

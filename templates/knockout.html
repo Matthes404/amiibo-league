@@ -12,7 +12,11 @@
       <td>{{ m[1].name }}</td>
       <td>
         {% if m[2] %}
-          {{ m[2].name }}
+          {% if m[2] == 'Draw' %}
+            Draw
+          {% else %}
+            {{ m[2].name }}
+          {% endif %}
         {% else %}
           <form method="post" action="/report_knockout_result">
             <input type="hidden" name="bracket" value="{{ key }}">
@@ -21,6 +25,7 @@
             <select name="winner" required>
               <option value="{{ m[0].id }}">{{ m[0].name }}</option>
               <option value="{{ m[1].id }}">{{ m[1].name }}</option>
+              <option value="draw">Draw</option>
             </select>
             <button type="submit">Submit</button>
           </form>
