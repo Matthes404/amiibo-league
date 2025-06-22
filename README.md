@@ -26,10 +26,10 @@
 Ziel: Alle Spielen weiterspielen, gleiche / ähnliche Anzahl spiele für Elo auswertung
 
 | Amiibo | Elo | Titel |
-|---------|--------| - |
-| Test 1 | 1200 | FM (Rentner) |
-| Test 2 | 1100 | NONE |
-| ... | ... | ... |
+|--------|-----|-------|
+| Test 1 | 1800 | FM |
+| Test 2 | 1950 | IM |
+| Test 3 | 2100 | GM |
 
 Die Leaderboard-Ansicht zeigt zusätzlich die gewonnenen "KoSieg"-Titel an.
 
@@ -53,8 +53,14 @@ Glicko 2 Elosystem (evtl. erweitert durch größe der Siege)
 
 
 ### Titel
-- FM (ab 1800 & 1 K.O. Win & gewisse Höhe von K.O)  
-- IM (ab 2000 & 2 K.O. Win & gewisse Höhe von K.O)
-- GM (ab 2200 & 3 K.O. Win & gewisse Höhe von K.O)
-Entsprechend anpassbar falls unrealistisch
-Titel kann nicht verloren werden bei Unterschreitung der Grenze
+Die Titel orientieren sich am Elo sowie an gewonnenen K.O.-Bracket­uellen.
+Es wird immer nur der höchste erreichte Titel angezeigt.
+
+- **FM** – ab 1800 Elo und mindestens **ein** Sieg in einem Bracket
+  der Klassen **EF** oder höher (also EF, CD oder AB).
+- **IM** – ab 1900 Elo und mindestens **zwei** Siege in Brackets der
+  Klassen **CD** oder höher.
+- **GM** – ab 2000 Elo und mindestens **drei** Siege im obersten Bracket
+  **AB**.
+
+Titel gehen bei Elo-Verlust nicht verloren.

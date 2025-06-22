@@ -1,4 +1,36 @@
-body { font-family: Arial, sans-serif; margin: 2em; }
-nav a { margin-right: 1em; }
-leaderboard-table { border-collapse: collapse; }
-table, th, td { border: 1px solid #ccc; padding: 0.5em; }
+body {
+    font-family: Arial, sans-serif;
+    margin: 2em;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+nav {
+    margin-bottom: 1em;
+}
+
+nav a {
+    margin-right: 1em;
+    text-decoration: none;
+    color: #333;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+th {
+    background-color: #eee;
+}
+
+table, th, td {
+    border: 1px solid #ccc;
+    padding: 0.5em;
+    text-align: left;
+}
