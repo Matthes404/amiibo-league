@@ -7,6 +7,7 @@ class Amiibo(db.Model):
     name = db.Column(db.String(80), unique=True, nullable=False)
     current_elo = db.Column(db.Integer, default=1500)
     peak_elo = db.Column(db.Integer, default=1500)
+    league = db.Column(db.String(20), default="")
 
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Initial Swiss</h1>
+{% if scores %}
+<h2>Round {{ round_no }}</h2>
+<table>
+    <tr><th>Name</th><th>Score</th><th>League</th></tr>
+    {% for p in players %}
+    <tr>
+        <td>{{ p.name }}</td>
+        <td>{{ scores[p.id] }}</td>
+        <td>{{ p.league }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% if pairs %}
+<table>
+    <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
+    {% for match in pairs %}
+    <tr>
+        <td>{{ match[0].name }}</td>
+        <td>{{ match[1].name }}</td>
+        <td>
+            {% if match[2] %}
+                {{ match[2].name }}
+            {% else %}
+                <form method="post" action="/report_swiss_result">
+                    <input type="hidden" name="player1" value="{{ match[0].id }}">
+                    <input type="hidden" name="player2" value="{{ match[1].id }}">
+                    <select name="winner" required>
+                        <option value="{{ match[0].id }}">{{ match[0].name }}</option>
+                        <option value="{{ match[1].id }}">{{ match[1].name }}</option>
+                    </select>
+                    <button type="submit">Submit</button>
+                </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+    {% if done %}<p>Swiss finished. Leagues assigned.</p>{% else %}<p>Round complete.</p>{% endif %}
+{% endif %}
+{% else %}
+<p>No Swiss in progress.</p>
+<form method="post" action="/start_swiss">
+    <button type="submit">Start Swiss</button>
+</form>
+{% endif %}
+{% endblock %}

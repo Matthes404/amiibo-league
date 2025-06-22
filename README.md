@@ -8,7 +8,9 @@
 
 - 1 Champion
 	- 4-große Gruppen
-		- initialisierung durch schnelles Swiss (4 Runden, nicht Rating spezifisch)
+                - initialisierung durch schnelles Swiss (4 Runden, nicht Rating spezifisch)
+                - Swiss kann im Webinterface unter "Swiss" gestartet und gespielt werden
+                - Nach Abschluss der 4 Runden werden automatisch vier Ligen gebildet
 		- Erster steigt auf
 		- Letzter steigt ab
 		- ca. 91 Teilnehmer -> 91 / 4 = ~22-23
