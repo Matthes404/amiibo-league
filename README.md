@@ -11,8 +11,13 @@
                 - initialisierung durch schnelles Swiss (4 Runden, nicht Rating spezifisch)
                 - Swiss kann im Webinterface unter "Swiss" gestartet und gespielt werden
                 - Nach Abschluss der 4 Runden werden automatisch Ligen mit je vier Spielern gebildet (die letzte Liga kann größer sein)
-		- Erster steigt auf
-		- Letzter steigt ab
+                - Erster steigt auf
+                - Letzter steigt ab
+                - Nach Abschluss aller Ligaspiele kann per "Finish League" die Saison beendet werden
+                        - Sieger jeder Liga steigt auf, Letzter steigt ab
+                        - Anschließend pausiert die Liga und jeweils zwei Gruppen werden in ein K.O.-Bracket gesteckt (A+B, C+D, usw.)
+                        - Gewinner eines Brackets erhält einen entsprechenden "KoSieg"-Eintrag
+                        - Sind alle K.O.-Runden gespielt, startet automatisch die nächste Saison mit den neuen Ligen
 		- ca. 91 Teilnehmer -> 91 / 4 = ~22-23
 			- Falls nicht teilbar an letzte Gruppe anhängen
 			- Jeweils 4 Gruppen bilden nach Saison ein K.O. (ersten 4, die danach usw. + zuerst werden auf und abstiege behandelt)
@@ -24,6 +29,9 @@ Ziel: Alle Spielen weiterspielen, gleiche / ähnliche Anzahl spiele für Elo aus
 |---------|--------| - |
 | Test 1 | 1200 | FM (Rentner) |
 | Test 2 | 1100 | NONE |
+| ... | ... | ... |
+
+Die Leaderboard-Ansicht zeigt zusätzlich die gewonnenen "KoSieg"-Titel an.
 
 ## Einzelspiel
 

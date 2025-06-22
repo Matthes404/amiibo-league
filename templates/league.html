@@ -11,7 +11,7 @@
 </table>
 <table>
   <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
-  {% for m in matches %}
+{% for m in matches %}
   <tr>
     <td>{{ m[0].name }}</td>
     <td>{{ m[1].name }}</td>
@@ -32,7 +32,10 @@
       {% endif %}
     </td>
   </tr>
-  {% endfor %}
+{% endfor %}
 </table>
 {% endfor %}
+<form method="post" action="/finish_league">
+    <button type="submit">Finish League</button>
+</form>
 {% endblock %}
