@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect
+from sqlalchemy import text
 from models import db, Amiibo, Match
 import random
 
@@ -12,9 +13,9 @@ with app.app_context():
     db.create_all()
     # ensure the 'waiting' column exists if database was created before
     try:
-        db.session.execute('SELECT waiting FROM amiibo LIMIT 1')
+        db.session.execute(text('SELECT waiting FROM amiibo LIMIT 1'))
     except Exception:
-        db.session.execute('ALTER TABLE amiibo ADD COLUMN waiting BOOLEAN DEFAULT 0')
+        db.session.execute(text('ALTER TABLE amiibo ADD COLUMN waiting BOOLEAN DEFAULT 0'))
         db.session.commit()
 
 # Simple ELO update function
