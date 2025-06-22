@@ -17,6 +17,12 @@ nav {
     margin-bottom: 1em;
 }
 
+nav img.logo {
+    height: 40px;
+    vertical-align: middle;
+    margin-right: 1em;
+}
+
 nav a {
     margin-right: 1em;
     text-decoration: none;
