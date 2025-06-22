@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Tournament</h1>
+{% if pairs %}
+<table>
+    <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
+    {% for match in pairs %}
+    <tr>
+        <td>{{ match[0].name }}</td>
+        <td>{{ match[1].name }}</td>
+        <td>
+            {% if match[2] %}
+                {{ match[2].name }}
+            {% else %}
+                <form method="post" action="/report_result">
+                    <input type="hidden" name="player1" value="{{ match[0].id }}">
+                    <input type="hidden" name="player2" value="{{ match[1].id }}">
+                    <select name="winner" required>
+                        <option value="{{ match[0].id }}">{{ match[0].name }}</option>
+                        <option value="{{ match[1].id }}">{{ match[1].name }}</option>
+                    </select>
+                    <button type="submit">Submit</button>
+                </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No tournament in progress.</p>
+{% endif %}
+<form method="post" action="/start_tournament">
+    <button type="submit">Start New Tournament</button>
+</form>
+{% endblock %}

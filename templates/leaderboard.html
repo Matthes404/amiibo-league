@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Leaderboard</h1>
+<table>
+    <tr><th>Name</th><th>Current Elo</th><th>Peak Elo</th></tr>
+    {% for amiibo in amiibos %}
+    <tr>
+        <td>{{ amiibo.name }}</td>
+        <td>{{ amiibo.current_elo }}</td>
+        <td>{{ amiibo.peak_elo }}</td>
+    </tr>
+    {% endfor %}
+</table>
+<form method="post" action="/add_amiibo">
+    <h3>Add Amiibo</h3>
+    <input type="text" name="name" placeholder="Name" required>
+    <button type="submit">Add</button>
+</form>
+{% endblock %}
