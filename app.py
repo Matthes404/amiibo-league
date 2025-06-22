@@ -69,6 +69,8 @@ swiss_scores = {}
 swiss_previous_matches = set()
 league_matches = {}
 league_scores = {}
+knockout_brackets = {}
+knockout_remaining = {}
 
 @app.route('/tournament', methods=['GET'])
 def tournament():
@@ -211,6 +213,129 @@ def report_league_result():
     db.session.add(match)
     db.session.commit()
     return redirect('/league')
+
+def promote_and_relegate():
+    players = Amiibo.query.all()
+    groups = sorted(set(p.league for p in players))
+    rankings = {}
+    for g in groups:
+        scores = league_scores.get(g, {})
+        ordered = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        if ordered:
+            rankings[g] = [pid for pid, _ in ordered]
+    promotions = {}
+    relegations = {}
+    for i, g in enumerate(groups):
+        rank = rankings.get(g)
+        if not rank:
+            continue
+        if i > 0 and rank:
+            promotions[rank[0]] = groups[i-1]
+        if i < len(groups) - 1 and rank:
+            relegations[rank[-1]] = groups[i+1]
+    for pid, lg in promotions.items():
+        Amiibo.query.get(pid).league = lg
+    for pid, lg in relegations.items():
+        Amiibo.query.get(pid).league = lg
+    db.session.commit()
+
+def setup_league_matches():
+    league_matches.clear()
+    league_scores.clear()
+    players = Amiibo.query.all()
+    groups = sorted(set(p.league for p in players))
+    for g in groups:
+        pls = [p for p in players if p.league == g]
+        league_scores[g] = {p.id: 0 for p in pls}
+        matches = []
+        for i in range(len(pls)):
+            for j in range(i+1, len(pls)):
+                matches.append((pls[i].id, pls[j].id, None))
+        league_matches[g] = matches
+
+def setup_knockouts():
+    knockout_brackets.clear()
+    knockout_remaining.clear()
+    players = Amiibo.query.all()
+    groups = sorted(set(p.league for p in players))
+    for i in range(0, len(groups), 2):
+        if i+1 >= len(groups):
+            break
+        g1, g2 = groups[i], groups[i+1]
+        key = g1 + g2
+        contestants = [p for p in players if p.league in (g1, g2)]
+        random.shuffle(contestants)
+        knockout_remaining[key] = [p.id for p in contestants]
+        pairs = []
+        for j in range(0, len(contestants), 2):
+            if j+1 < len(contestants):
+                pairs.append((contestants[j].id, contestants[j+1].id, None))
+        knockout_brackets[key] = pairs
+
+def advance_knockout(key):
+    winners = [m[2] for m in knockout_brackets[key] if m[2]]
+    if len(winners) * 2 != len(knockout_brackets[key]) * 2:
+        return
+    if len(winners) == 1:
+        champ = Amiibo.query.get(winners[0])
+        champ.ko_titles = (champ.ko_titles + ',' if champ.ko_titles else '') + key
+        db.session.commit()
+        knockout_brackets[key] = []
+        knockout_remaining[key] = winners
+    else:
+        random.shuffle(winners)
+        pairs = []
+        for i in range(0, len(winners), 2):
+            if i+1 < len(winners):
+                pairs.append((winners[i], winners[i+1], None))
+        knockout_brackets[key] = pairs
+        knockout_remaining[key] = winners
+
+def check_knockouts_done():
+    for k in knockout_brackets:
+        if knockout_brackets[k]:
+            return False
+    return True
+
+@app.route('/finish_league', methods=['POST'])
+def finish_league():
+    promote_and_relegate()
+    setup_knockouts()
+    return redirect('/knockout')
+
+@app.route('/knockout', methods=['GET'])
+def knockout():
+    displays = {}
+    for key, pairs in knockout_brackets.items():
+        pairs_disp = [(Amiibo.query.get(p1), Amiibo.query.get(p2), Amiibo.query.get(w) if w else None) for p1, p2, w in pairs]
+        winner = None
+        if not pairs and knockout_remaining.get(key):
+            winner = Amiibo.query.get(knockout_remaining[key][0])
+        displays[key] = {'pairs': pairs_disp, 'winner': winner}
+    return render_template('knockout.html', brackets=displays)
+
+@app.route('/report_knockout_result', methods=['POST'])
+def report_knockout_result():
+    key = request.form['bracket']
+    p1 = int(request.form['player1'])
+    p2 = int(request.form['player2'])
+    winner = int(request.form['winner'])
+    a1 = Amiibo.query.get(p1)
+    a2 = Amiibo.query.get(p2)
+    win_obj = a1 if winner == p1 else a2
+    lose_obj = a2 if winner == p1 else a1
+    update_elo(win_obj, lose_obj)
+    matches = knockout_brackets.get(key, [])
+    for idx, m in enumerate(matches):
+        if (m[0], m[1]) == (p1, p2):
+            matches[idx] = (p1, p2, winner)
+            break
+    knockout_brackets[key] = matches
+    db.session.commit()
+    advance_knockout(key)
+    if check_knockouts_done():
+        setup_league_matches()
+    return redirect('/knockout')
 
 if __name__ == '__main__':
     app.run(debug=True)

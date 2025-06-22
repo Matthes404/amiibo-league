@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Knockout Brackets</h1>
+{% for key, data in brackets.items() %}
+  <h2>Bracket {{ key }}</h2>
+  {% if data.pairs %}
+  <table>
+    <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
+    {% for m in data.pairs %}
+    <tr>
+      <td>{{ m[0].name }}</td>
+      <td>{{ m[1].name }}</td>
+      <td>
+        {% if m[2] %}
+          {{ m[2].name }}
+        {% else %}
+          <form method="post" action="/report_knockout_result">
+            <input type="hidden" name="bracket" value="{{ key }}">
+            <input type="hidden" name="player1" value="{{ m[0].id }}">
+            <input type="hidden" name="player2" value="{{ m[1].id }}">
+            <select name="winner" required>
+              <option value="{{ m[0].id }}">{{ m[0].name }}</option>
+              <option value="{{ m[1].id }}">{{ m[1].name }}</option>
+            </select>
+            <button type="submit">Submit</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    {% if data.winner %}
+      <p>Winner: {{ data.winner.name }}</p>
+    {% else %}
+      <p>No matches.</p>
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% endblock %}
