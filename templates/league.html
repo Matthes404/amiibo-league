@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Leagues</h1>
+{% for lg, players, matches in leagues %}
+<h2>League {{ lg }}</h2>
+<table>
+  <tr><th>Name</th><th>Wins</th></tr>
+  {% for p, sc in players %}
+  <tr><td>{{ p.name }}</td><td>{{ sc }}</td></tr>
+  {% endfor %}
+</table>
+<table>
+  <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
+  {% for m in matches %}
+  <tr>
+    <td>{{ m[0].name }}</td>
+    <td>{{ m[1].name }}</td>
+    <td>
+      {% if m[2] %}
+        {{ m[2].name }}
+      {% else %}
+        <form method="post" action="/report_league_result">
+            <input type="hidden" name="league" value="{{ lg }}">
+            <input type="hidden" name="player1" value="{{ m[0].id }}">
+            <input type="hidden" name="player2" value="{{ m[1].id }}">
+            <select name="winner" required>
+                <option value="{{ m[0].id }}">{{ m[0].name }}</option>
+                <option value="{{ m[1].id }}">{{ m[1].name }}</option>
+            </select>
+            <button type="submit">Submit</button>
+        </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endfor %}
+{% endblock %}
