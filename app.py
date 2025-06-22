@@ -63,7 +63,23 @@ def leaderboard():
 @app.route('/add_amiibo', methods=['POST'])
 def add_amiibo():
     name = request.form['name']
-    a = Amiibo(name=name, waiting=league_cycle_running())
+    cycle = league_cycle_running()
+    a = Amiibo(name=name, waiting=cycle)
+    if not cycle:
+        players = Amiibo.query.filter_by(waiting=False).all()
+        groups = sorted(set(p.league for p in players if p.league))
+        if not groups:
+            target = 'A'
+            size = 0
+        else:
+            last = groups[-1]
+            size = sum(1 for p in players if p.league == last)
+            if size >= 4:
+                target = chr(ord(last) + 1)
+                size = 0
+            else:
+                target = last
+        a.league = target
     db.session.add(a)
     db.session.commit()
     return redirect('/leaderboard')
