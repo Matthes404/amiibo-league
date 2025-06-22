@@ -8,16 +8,17 @@
 <body>
     <nav>
         <img src="/logo/logo_standard.png" alt="Amiibo League Logo" class="logo">
-        <a href="/">Home</a> |
-        <a href="/leaderboard">Leaderboard</a> |
-        <a href="/tournament">Tournament</a> |
-        <a href="/swiss">Swiss</a> |
-        <a href="/league">League</a> |
+        <a href="/">Home</a>
+        <a href="/leaderboard">Leaderboard</a>
+        <a href="/tournament">Tournament</a>
+        <a href="/swiss">Swiss</a>
+        <a href="/league">League</a>
         <a href="/knockout">Knockout</a>
         <button id="theme-toggle" class="theme-toggle">Dark Mode</button>
     </nav>
-    <hr>
-    {% block content %}{% endblock %}
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
     <script src="/static/darkmode.js"></script>
 </body>
 </html>
