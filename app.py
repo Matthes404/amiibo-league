@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect
+from sqlalchemy import text
 from models import db, Amiibo, Match
 import random
 
@@ -12,9 +13,9 @@ with app.app_context():
     db.create_all()
     # ensure the 'waiting' column exists if database was created before
     try:
-        db.session.execute('SELECT waiting FROM amiibo LIMIT 1')
+        db.session.execute(text('SELECT waiting FROM amiibo LIMIT 1'))
     except Exception:
-        db.session.execute('ALTER TABLE amiibo ADD COLUMN waiting BOOLEAN DEFAULT 0')
+        db.session.execute(text('ALTER TABLE amiibo ADD COLUMN waiting BOOLEAN DEFAULT 0'))
         db.session.commit()
 
 # Simple ELO update function
@@ -63,7 +64,23 @@ def leaderboard():
 @app.route('/add_amiibo', methods=['POST'])
 def add_amiibo():
     name = request.form['name']
-    a = Amiibo(name=name, waiting=league_cycle_running())
+    cycle = league_cycle_running()
+    a = Amiibo(name=name, waiting=cycle)
+    if not cycle:
+        players = Amiibo.query.filter_by(waiting=False).all()
+        groups = sorted(set(p.league for p in players if p.league))
+        if not groups:
+            target = 'A'
+            size = 0
+        else:
+            last = groups[-1]
+            size = sum(1 for p in players if p.league == last)
+            if size >= 4:
+                target = chr(ord(last) + 1)
+                size = 0
+            else:
+                target = last
+        a.league = target
     db.session.add(a)
     db.session.commit()
     return redirect('/leaderboard')
