@@ -2,12 +2,13 @@
 {% block content %}
 <h1>Leaderboard</h1>
 <table>
-    <tr><th>Name</th><th>Current Elo</th><th>Peak Elo</th></tr>
+    <tr><th>Name</th><th>Current Elo</th><th>Peak Elo</th><th>League</th></tr>
     {% for amiibo in amiibos %}
     <tr>
         <td>{{ amiibo.name }}</td>
         <td>{{ amiibo.current_elo }}</td>
         <td>{{ amiibo.peak_elo }}</td>
+        <td>{{ amiibo.league }}</td>
     </tr>
     {% endfor %}
 </table>
