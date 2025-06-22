@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Leaderboard</h1>
-<table>
-    <tr><th>Name</th><th>Current Elo</th><th>Peak Elo</th><th>League</th><th>KO Titles</th></tr>
+<table class="leaderboard">
+    <tr><th>Name</th><th>Title</th><th>Current Elo</th><th>Peak Elo</th><th>League</th><th>KO Titles</th></tr>
     {% for amiibo in amiibos %}
     <tr>
         <td>{{ amiibo.name }}</td>
+        <td>{{ amiibo.title }}</td>
         <td>{{ amiibo.current_elo }}</td>
         <td>{{ amiibo.peak_elo }}</td>
         <td>{{ amiibo.league }}</td>
