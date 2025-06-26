@@ -87,7 +87,8 @@ def leaderboard():
     amiibos = Amiibo.query.order_by(Amiibo.current_elo.desc()).all()
     podium = amiibos[:3]
     others = amiibos[3:]
-    return render_template('leaderboard.html', amiibos=others, podium=podium, last=last)
+    offset = len(podium)
+    return render_template('leaderboard.html', amiibos=others, podium=podium, last=last, offset=offset)
 
 @app.route('/add_amiibo', methods=['POST'])
 def add_amiibo():
