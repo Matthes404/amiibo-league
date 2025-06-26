@@ -16,7 +16,7 @@
         <button type="submit">Save</button>
       </form>
     {% endif %}
-    <div class="name">{{ a.name }}</div>
+    <div class="name"><a href="/amiibo/{{ a.id }}">{{ a.name }}</a></div>
     <div class="elo">{{ a.current_elo }}</div>
   </div>
   {% endfor %}
@@ -33,7 +33,7 @@
     <tr>
         <td>{{ loop.index + offset }}</td>
         <td>{% if amiibo.profile_pic %}<img src="/profile/{{ amiibo.profile_pic }}" class="thumb" alt="{{ amiibo.name }}">{% endif %}</td>
-        <td>{{ amiibo.name }}</td>
+        <td><a href="/amiibo/{{ amiibo.id }}">{{ amiibo.name }}</a></td>
         <td>{{ amiibo.title }}</td>
         <td>{{ amiibo.current_elo }}</td>
         <td>{{ amiibo.peak_elo }}</td>

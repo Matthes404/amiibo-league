@@ -90,6 +90,57 @@ def leaderboard():
     offset = len(podium)
     return render_template('leaderboard.html', amiibos=others, podium=podium, last=last, offset=offset)
 
+@app.route('/amiibo/<int:amiibo_id>', methods=['GET'])
+def amiibo_profile(amiibo_id):
+    """Display detailed profile for an Amiibo."""
+    amiibo = Amiibo.query.get_or_404(amiibo_id)
+
+    # compute rating history from match order
+    matches_all = Match.query.order_by(Match.id).all()
+    ratings = {a.id: 1500 for a in Amiibo.query.all()}
+    history_labels = [0]
+    history_values = [1500]
+    count = 0
+    for m in matches_all:
+        r1, r2 = ratings[m.player1_id], ratings[m.player2_id]
+        if m.draw:
+            score1 = 0.5
+        else:
+            score1 = 1 if m.winner_id == m.player1_id else 0
+        expected1 = 1 / (1 + 10 ** ((r2 - r1) / 400))
+        expected2 = 1 - expected1
+        r1 += int(K * (score1 - expected1))
+        r2 += int(K * ((1 - score1) - expected2))
+        ratings[m.player1_id] = r1
+        ratings[m.player2_id] = r2
+        if m.player1_id == amiibo_id:
+            count += 1
+            history_labels.append(count)
+            history_values.append(r1)
+        if m.player2_id == amiibo_id:
+            count += 1
+            history_labels.append(count)
+            history_values.append(r2)
+
+    matches = Match.query.filter((Match.player1_id == amiibo_id) | (Match.player2_id == amiibo_id)).order_by(Match.id.desc()).all()
+    display = []
+    for m in matches:
+        opp_id = m.player2_id if m.player1_id == amiibo_id else m.player1_id
+        opponent = Amiibo.query.get(opp_id)
+        if m.draw:
+            result = 'Draw'
+        else:
+            result = 'Win' if m.winner_id == amiibo_id else 'Loss'
+        display.append({'id': m.id, 'opponent': opponent.name, 'result': result})
+
+    return render_template(
+        'profile.html',
+        amiibo=amiibo,
+        rating_labels=history_labels,
+        rating_values=history_values,
+        matches=display,
+    )
+
 @app.route('/add_amiibo', methods=['POST'])
 def add_amiibo():
     name = request.form['name']
