@@ -10,6 +10,7 @@ class Amiibo(db.Model):
     league = db.Column(db.String(20), default="")
     ko_titles = db.Column(db.String(120), default="")
     waiting = db.Column(db.Boolean, default=False)
+    profile_pic = db.Column(db.String(120), default="")
 
     @property
     def title(self) -> str:

@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, send_from_directory
 from sqlalchemy import text
 from models import db, Amiibo, Match
+from werkzeug.utils import secure_filename
+import os
 import random
 
 app = Flask(__name__)
@@ -23,11 +25,22 @@ with app.app_context():
     except Exception:
         db.session.execute(text('ALTER TABLE match ADD COLUMN draw BOOLEAN DEFAULT 0'))
         db.session.commit()
+    # ensure 'profile_pic' column exists
+    try:
+        db.session.execute(text('SELECT profile_pic FROM amiibo LIMIT 1'))
+    except Exception:
+        db.session.execute(text("ALTER TABLE amiibo ADD COLUMN profile_pic VARCHAR(120) DEFAULT ''"))
+        db.session.commit()
 
 @app.route('/logo/<path:filename>')
 def serve_logo(filename):
     """Serve images from the logo directory."""
     return send_from_directory('logo', filename)
+
+@app.route('/profile/<path:filename>')
+def serve_profile(filename):
+    """Serve profile pictures."""
+    return send_from_directory('profile', filename)
 
 # Simple ELO update function
 K = 32
@@ -72,7 +85,9 @@ def index():
 def leaderboard():
     last = request.args.get('last', type=int)
     amiibos = Amiibo.query.order_by(Amiibo.current_elo.desc()).all()
-    return render_template('leaderboard.html', amiibos=amiibos, last=last)
+    podium = amiibos[:3]
+    others = amiibos[3:]
+    return render_template('leaderboard.html', amiibos=others, podium=podium, last=last)
 
 @app.route('/add_amiibo', methods=['POST'])
 def add_amiibo():
@@ -96,6 +111,49 @@ def add_amiibo():
         a.league = target
     db.session.add(a)
     db.session.commit()
+    return redirect('/leaderboard')
+
+@app.route('/add_amiibos', methods=['POST'])
+def add_amiibos():
+    names = request.form['names']
+    for raw in names.splitlines():
+        name = raw.strip()
+        if not name:
+            continue
+        cycle = league_cycle_running()
+        a = Amiibo(name=name, waiting=cycle)
+        if not cycle:
+            players = Amiibo.query.filter_by(waiting=False).all()
+            groups = sorted(set(p.league for p in players if p.league))
+            if not groups:
+                target = 'A'
+                size = 0
+            else:
+                last = groups[-1]
+                size = sum(1 for p in players if p.league == last)
+                if size >= 4:
+                    target = chr(ord(last) + 1)
+                    size = 0
+                else:
+                    target = last
+            a.league = target
+        db.session.add(a)
+    db.session.commit()
+    return redirect('/leaderboard')
+
+@app.route('/upload_pic/<int:amiibo_id>', methods=['POST'])
+def upload_pic(amiibo_id):
+    amiibo = Amiibo.query.get(amiibo_id)
+    if 'picture' not in request.files or not amiibo:
+        return redirect('/leaderboard')
+    file = request.files['picture']
+    if file.filename:
+        filename = secure_filename(file.filename)
+        os.makedirs('profile', exist_ok=True)
+        path = os.path.join('profile', filename)
+        file.save(path)
+        amiibo.profile_pic = filename
+        db.session.commit()
     return redirect('/leaderboard')
 
 current_pairs = []

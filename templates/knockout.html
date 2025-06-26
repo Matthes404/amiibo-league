@@ -4,7 +4,7 @@
 {% for key, data in brackets.items() %}
   <h2>Bracket {{ key }}</h2>
   {% if data.pairs %}
-  <table>
+  <table class="bracket">
     <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
     {% for m in data.pairs %}
     <tr>

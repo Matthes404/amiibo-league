@@ -98,3 +98,28 @@ body.dark-mode {
     --header-bg: #222;
     --border-color: #444;
 }
+
+.podium {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 1em;
+    margin-bottom: 1em;
+}
+
+.podium .position img {
+    border: 2px solid var(--accent-color);
+}
+
+.podium .first img { height: 120px; }
+.podium .second img { height: 100px; }
+.podium .third img { height: 100px; }
+
+.thumb {
+    height: 40px;
+}
+
+.bracket, .standings {
+    max-width: 600px;
+    margin: 0 auto 1em auto;
+}
