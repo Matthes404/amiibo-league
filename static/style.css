@@ -16,6 +16,11 @@ body {
     color: var(--text-color);
 }
 
+a,
+a:visited {
+    color: var(--link-color);
+}
+
 nav {
     background: #000;
     border-bottom: 4px solid var(--accent-color);
