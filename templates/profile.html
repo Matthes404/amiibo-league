@@ -1,19 +1,15 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>{{ amiibo.name }}</h1>
-<div>
-  {% if amiibo.profile_pic %}
-    <img src="/profile/{{ amiibo.profile_pic }}" class="thumb" alt="{{ amiibo.name }}">
-  {% endif %}
-  <p>Current Elo: {{ amiibo.current_elo }}</p>
-</div>
 <div class="profile-layout">
-  <div class="chart-container">
-    <canvas id="ratingChart" width="300" height="150" class="graph"></canvas>
-  </div>
-  <div class="history-container">
-    <h2>Match History</h2>
-    <table class="bracket">
+  <div class="profile-main">
+    <p>Current Elo: {{ amiibo.current_elo }}</p>
+    <div class="chart-container">
+      <canvas id="ratingChart" width="300" height="150" class="graph"></canvas>
+    </div>
+    <div class="history-container">
+      <h2>Match History</h2>
+      <table class="bracket">
       <tr><th>ID</th><th>Opponent</th><th>Result</th></tr>
       {% for m in matches %}
       <tr>
@@ -27,6 +23,12 @@
       <a href="?all=1">Show all matches</a>
     {% else %}
       <a href="?">Show less</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="picture-container">
+    {% if amiibo.profile_pic %}
+      <img src="/profile/{{ amiibo.profile_pic }}" class="profile-pic" alt="{{ amiibo.name }}">
     {% endif %}
   </div>
 </div>
