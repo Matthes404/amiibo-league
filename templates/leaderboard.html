@@ -6,8 +6,15 @@
   {% for a in podium %}
   {% set cls = 'first' if loop.index0 == 0 else 'second' if loop.index0 == 1 else 'third' %}
   <div class="position {{ cls }}">
+    <div class="place">{{ loop.index }}</div>
     {% if a.profile_pic %}
       <img src="/profile/{{ a.profile_pic }}" alt="{{ a.name }}" />
+    {% else %}
+      <div class="placeholder"></div>
+      <form method="post" action="/upload_pic/{{ a.id }}" enctype="multipart/form-data" class="pic-upload">
+        <input type="file" name="picture" accept="image/*">
+        <button type="submit">Save</button>
+      </form>
     {% endif %}
     <div class="name">{{ a.name }}</div>
     <div class="elo">{{ a.current_elo }}</div>
@@ -21,9 +28,10 @@
     <button type="submit">Apply</button>
 </form>
 <table class="leaderboard">
-    <tr><th>Pic</th><th>Name</th><th>Title</th><th>Current Elo</th><th>Peak Elo</th><th>League</th><th>KO Titles</th><th>Win %</th><th>Upload</th></tr>
+    <tr><th>#</th><th>Pic</th><th>Name</th><th>Title</th><th>Current Elo</th><th>Peak Elo</th><th>League</th><th>KO Titles</th><th>Win %</th><th>Upload</th></tr>
     {% for amiibo in amiibos %}
     <tr>
+        <td>{{ loop.index + offset }}</td>
         <td>{% if amiibo.profile_pic %}<img src="/profile/{{ amiibo.profile_pic }}" class="thumb" alt="{{ amiibo.name }}">{% endif %}</td>
         <td>{{ amiibo.name }}</td>
         <td>{{ amiibo.title }}</td>

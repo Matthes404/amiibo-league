@@ -107,13 +107,52 @@ body.dark-mode {
     margin-bottom: 1em;
 }
 
-.podium .position img {
-    border: 2px solid var(--accent-color);
+.podium .position {
+    position: relative;
+    text-align: center;
 }
 
-.podium .first img { height: 120px; }
-.podium .second img { height: 100px; }
-.podium .third img { height: 100px; }
+.podium .position img,
+.podium .position .placeholder {
+    border: 2px solid var(--accent-color);
+    display: block;
+    margin: 0 auto;
+}
+
+.podium .position .placeholder {
+    background: #333;
+    color: #777;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.podium .first img, .podium .first .placeholder { height: 120px; width: 120px; }
+.podium .second img, .podium .second .placeholder { height: 100px; width: 100px; }
+.podium .third img, .podium .third .placeholder { height: 100px; width: 100px; }
+
+.podium .place {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent-color);
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.pic-upload input[type="file"] {
+    width: 100%;
+    margin: 0.2em 0;
+}
+
 
 .thumb {
     height: 40px;
