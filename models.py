@@ -67,3 +67,11 @@ class Match(db.Model):
     winner_id = db.Column(db.Integer, db.ForeignKey('amiibo.id'), nullable=True)
     draw = db.Column(db.Boolean, default=False)
     round_no = db.Column(db.Integer, default=1)
+
+
+class State(db.Model):
+    """Generic key/value store for persisting application state."""
+
+    key = db.Column(db.String(50), primary_key=True)
+    value = db.Column(db.Text)
+

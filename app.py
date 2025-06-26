@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, redirect, send_from_directory
 from sqlalchemy import text
-from models import db, Amiibo, Match
+from models import db, Amiibo, Match, State
 from werkzeug.utils import secure_filename
 import os
 import random
+import json
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///amiibo.db'
@@ -11,8 +12,90 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
+# in-memory state variables (populated from DB later)
+current_pairs = []
+current_swiss_pairs = []
+swiss_round = 0
+swiss_scores = {}
+swiss_previous_matches = set()
+league_matches = {}
+league_scores = {}
+knockout_brackets = {}
+knockout_remaining = {}
+knockout_history = {}
+
 with app.app_context():
     db.create_all()
+    # utility functions for persisting state
+    def get_state(key, default):
+        entry = State.query.get(key)
+        if not entry:
+            return default
+        try:
+            return json.loads(entry.value)
+        except Exception:
+            return default
+
+    def set_state(key, value):
+        entry = State.query.get(key)
+        if not entry:
+            entry = State(key=key)
+            db.session.add(entry)
+        entry.value = json.dumps(value)
+
+    def load_all_state():
+        """Load persistent state from the database."""
+        global current_pairs, current_swiss_pairs, swiss_round
+        global swiss_scores, swiss_previous_matches, league_matches
+        global league_scores, knockout_brackets, knockout_remaining
+        global knockout_history
+
+        current_pairs = get_state('current_pairs', [])
+        current_swiss_pairs = get_state('current_swiss_pairs', [])
+        swiss_round = get_state('swiss_round', 0)
+
+        ss_raw = get_state('swiss_scores', {})
+        swiss_scores = {int(k): v for k, v in ss_raw.items()}
+
+        prev_raw = get_state('swiss_previous_matches', [])
+        swiss_previous_matches = {tuple(map(int, p)) for p in prev_raw}
+
+        lm_raw = get_state('league_matches', {})
+        league_matches = {g: [tuple(p) for p in ps] for g, ps in lm_raw.items()}
+
+        ls_raw = get_state('league_scores', {})
+        league_scores = {g: {int(pid): sc for pid, sc in d.items()} for g, d in ls_raw.items()}
+
+        kb_raw = get_state('knockout_brackets', {})
+        knockout_brackets = {k: [tuple(p) for p in ps] for k, ps in kb_raw.items()}
+
+        kr_raw = get_state('knockout_remaining', {})
+        knockout_remaining = {k: [int(pid) for pid in lst] for k, lst in kr_raw.items()}
+
+        kh_raw = get_state('knockout_history', {})
+        knockout_history = {
+            k: [[tuple(p) for p in rnd] for rnd in rounds]
+            for k, rounds in kh_raw.items()
+        }
+
+    def save_all_state():
+        """Persist in-memory state to the database."""
+        set_state('current_pairs', current_pairs)
+        set_state('current_swiss_pairs', current_swiss_pairs)
+        set_state('swiss_round', swiss_round)
+        set_state('swiss_scores', swiss_scores)
+        set_state('swiss_previous_matches', [list(p) for p in swiss_previous_matches])
+        set_state('league_matches', {g: [list(p) for p in ps] for g, ps in league_matches.items()})
+        set_state('league_scores', league_scores)
+        set_state('knockout_brackets', {k: [list(p) for p in ps] for k, ps in knockout_brackets.items()})
+        set_state('knockout_remaining', knockout_remaining)
+        set_state('knockout_history', {
+            k: [[list(p) for p in rnd] for rnd in rounds]
+            for k, rounds in knockout_history.items()
+        })
+        db.session.commit()
+
+    load_all_state()
     # ensure the 'waiting' column exists if database was created before
     try:
         db.session.execute(text('SELECT waiting FROM amiibo LIMIT 1'))
@@ -211,17 +294,6 @@ def upload_pic(amiibo_id):
         db.session.commit()
     return redirect('/leaderboard')
 
-current_pairs = []
-current_swiss_pairs = []
-swiss_round = 0
-swiss_scores = {}
-swiss_previous_matches = set()
-league_matches = {}
-league_scores = {}
-knockout_brackets = {}
-knockout_remaining = {}
-knockout_history = {}
-
 def league_cycle_running() -> bool:
     """Return True if Swiss, league or knockout is active."""
     return swiss_round > 0 or bool(league_matches) or bool(knockout_brackets)
@@ -244,6 +316,7 @@ def start_tournament():
     for i in range(0, len(players), 2):
         if i+1 < len(players):
             current_pairs.append((players[i].id, players[i+1].id, None))
+    save_all_state()
     return redirect('/tournament')
 
 @app.route('/report_result', methods=['POST'])
@@ -269,6 +342,7 @@ def report_result():
     db.session.commit()
     result_flag = 'draw' if draw else winner_id
     current_pairs = [ (pp1, pp2, w if (pp1, pp2) != (p1, p2) else result_flag) for pp1, pp2, w in current_pairs]
+    save_all_state()
     return redirect('/tournament')
 
 
@@ -294,6 +368,7 @@ def start_swiss():
     swiss_scores = {p.id: 0 for p in players}
     swiss_previous_matches = set()
     current_swiss_pairs = generate_swiss_pairs(players, swiss_previous_matches)
+    save_all_state()
     return redirect('/swiss')
 
 
@@ -354,6 +429,7 @@ def report_swiss_result():
             swiss_round += 1
             players = sorted(Amiibo.query.all(), key=lambda a: (-swiss_scores.get(a.id, 0), a.current_elo))
             current_swiss_pairs = generate_swiss_pairs(players, swiss_previous_matches)
+    save_all_state()
     return redirect('/swiss')
 
 
@@ -405,6 +481,7 @@ def report_league_result():
     match = Match(player1_id=p1, player2_id=p2, winner_id=winner_id, draw=draw, round_no=swiss_round)
     db.session.add(match)
     db.session.commit()
+    save_all_state()
     return redirect('/league')
 
 def promote_and_relegate():
@@ -461,6 +538,7 @@ def setup_league_matches():
             for j in range(i+1, len(pls)):
                 matches.append((pls[i].id, pls[j].id, None))
         league_matches[g] = matches
+    save_all_state()
 
 def setup_knockouts():
     knockout_brackets.clear()
@@ -488,6 +566,7 @@ def setup_knockouts():
                 pairs.append((contestants[j].id, contestants[j+1].id, None))
         knockout_brackets[key] = pairs
         knockout_history[key] = [list(pairs)]
+    save_all_state()
 
 def advance_knockout(key):
     winners = []
@@ -514,6 +593,7 @@ def advance_knockout(key):
         knockout_brackets[key] = pairs
         knockout_remaining[key] = winners
         knockout_history.setdefault(key, []).append(list(pairs))
+    save_all_state()
 
 def check_knockouts_done():
     for k in knockout_brackets:
@@ -585,6 +665,7 @@ def report_knockout_result():
     advance_knockout(key)
     if check_knockouts_done():
         setup_league_matches()
+    save_all_state()
     return redirect('/knockout')
 
 if __name__ == '__main__':
