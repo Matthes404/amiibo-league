@@ -294,17 +294,6 @@ def upload_pic(amiibo_id):
         db.session.commit()
     return redirect('/leaderboard')
 
-current_pairs = []
-current_swiss_pairs = []
-swiss_round = 0
-swiss_scores = {}
-swiss_previous_matches = set()
-league_matches = {}
-league_scores = {}
-knockout_brackets = {}
-knockout_remaining = {}
-knockout_history = {}
-
 def league_cycle_running() -> bool:
     """Return True if Swiss, league or knockout is active."""
     return swiss_round > 0 or bool(league_matches) or bool(knockout_brackets)
