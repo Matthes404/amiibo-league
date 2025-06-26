@@ -131,12 +131,17 @@ def amiibo_profile(amiibo_id):
             result = 'Win' if m.winner_id == amiibo_id else 'Loss'
         display.append({'id': m.id, 'opponent': opponent.name, 'result': result})
 
+    show_all = request.args.get('all') == '1'
+    if not show_all:
+        display = display[:5]
+
     return render_template(
         'profile.html',
         amiibo=amiibo,
         rating_labels=history_labels,
         rating_values=history_values,
         matches=display,
+        show_all=show_all,
     )
 
 @app.route('/add_amiibo', methods=['POST'])
