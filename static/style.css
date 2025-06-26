@@ -162,3 +162,23 @@ body.dark-mode {
     max-width: 600px;
     margin: 0 auto 1em auto;
 }
+
+.profile-layout {
+    display: flex;
+    gap: 1em;
+    align-items: flex-start;
+}
+
+.chart-container {
+    background: #333;
+    padding: 0.5em;
+    border-radius: 4px;
+}
+
+.chart-container .graph {
+    background: #222;
+}
+
+.history-container {
+    flex: 1;
+}
