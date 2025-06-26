@@ -86,9 +86,7 @@ def leaderboard():
     last = request.args.get('last', type=int)
     amiibos = Amiibo.query.order_by(Amiibo.current_elo.desc()).all()
     podium = amiibos[:3]
-    others = amiibos[3:]
-    offset = len(podium)
-    return render_template('leaderboard.html', amiibos=others, podium=podium, last=last, offset=offset)
+    return render_template('leaderboard.html', amiibos=amiibos, podium=podium, last=last)
 
 @app.route('/amiibo/<int:amiibo_id>', methods=['GET'])
 def amiibo_profile(amiibo_id):
