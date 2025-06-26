@@ -3,7 +3,7 @@
 <h1>Initial Swiss</h1>
 {% if scores %}
 <h2>Round {{ round_no }}</h2>
-<table>
+<table class="standings">
     <tr><th>Name</th><th>Score</th><th>League</th></tr>
     {% for p in players %}
     <tr>
@@ -14,7 +14,7 @@
     {% endfor %}
 </table>
 {% if pairs %}
-<table>
+<table class="bracket">
     <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
     {% for match in pairs %}
     <tr>

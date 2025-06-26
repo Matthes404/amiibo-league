@@ -3,13 +3,13 @@
 <h1>Leagues</h1>
 {% for lg, players, matches in leagues %}
 <h2>League {{ lg }}</h2>
-<table>
+<table class="standings">
   <tr><th>Name</th><th>Wins</th></tr>
   {% for p, sc in players %}
   <tr><td>{{ p.name }}</td><td>{{ sc }}</td></tr>
   {% endfor %}
 </table>
-<table>
+<table class="bracket">
   <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
 {% for m in matches %}
   <tr>
