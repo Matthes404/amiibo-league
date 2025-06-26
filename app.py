@@ -220,6 +220,7 @@ league_matches = {}
 league_scores = {}
 knockout_brackets = {}
 knockout_remaining = {}
+knockout_history = {}
 
 def league_cycle_running() -> bool:
     """Return True if Swiss, league or knockout is active."""
@@ -464,14 +465,21 @@ def setup_league_matches():
 def setup_knockouts():
     knockout_brackets.clear()
     knockout_remaining.clear()
+    knockout_history.clear()
     players = Amiibo.query.filter_by(waiting=False).all()
     groups = sorted(set(p.league for p in players))
-    for i in range(0, len(groups), 2):
-        if i+1 >= len(groups):
-            break
-        g1, g2 = groups[i], groups[i+1]
-        key = g1 + g2
-        contestants = [p for p in players if p.league in (g1, g2)]
+    i = 0
+    while i < len(groups):
+        g1 = groups[i]
+        g2 = groups[i+1] if i + 1 < len(groups) else None
+        if g2:
+            key = g1 + g2
+            contestants = [p for p in players if p.league in (g1, g2)]
+            i += 2
+        else:
+            key = g1
+            contestants = [p for p in players if p.league == g1]
+            i += 1
         random.shuffle(contestants)
         knockout_remaining[key] = [p.id for p in contestants]
         pairs = []
@@ -479,6 +487,7 @@ def setup_knockouts():
             if j+1 < len(contestants):
                 pairs.append((contestants[j].id, contestants[j+1].id, None))
         knockout_brackets[key] = pairs
+        knockout_history[key] = [list(pairs)]
 
 def advance_knockout(key):
     winners = []
@@ -495,6 +504,7 @@ def advance_knockout(key):
         db.session.commit()
         knockout_brackets[key] = []
         knockout_remaining[key] = winners
+        knockout_history.setdefault(key, []).append([])
     else:
         random.shuffle(winners)
         pairs = []
@@ -503,6 +513,7 @@ def advance_knockout(key):
                 pairs.append((winners[i], winners[i+1], None))
         knockout_brackets[key] = pairs
         knockout_remaining[key] = winners
+        knockout_history.setdefault(key, []).append(list(pairs))
 
 def check_knockouts_done():
     for k in knockout_brackets:
@@ -519,16 +530,23 @@ def finish_league():
 @app.route('/knockout', methods=['GET'])
 def knockout():
     displays = {}
-    for key, pairs in knockout_brackets.items():
-        def resolve(w):
-            if w == 'draw':
-                return 'Draw'
-            return Amiibo.query.get(w) if w else None
-        pairs_disp = [(Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w)) for p1, p2, w in pairs]
+    def resolve(w):
+        if w == 'draw':
+            return 'Draw'
+        return Amiibo.query.get(w) if w else None
+
+    for key, rounds in knockout_history.items():
+        rounds_disp = []
+        for pairs in rounds:
+            pairs_disp = [
+                (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
+                for p1, p2, w in pairs
+            ]
+            rounds_disp.append(pairs_disp)
         winner = None
-        if not pairs and knockout_remaining.get(key):
+        if not knockout_brackets.get(key) and knockout_remaining.get(key):
             winner = Amiibo.query.get(knockout_remaining[key][0])
-        displays[key] = {'pairs': pairs_disp, 'winner': winner}
+        displays[key] = {'rounds': rounds_disp, 'winner': winner}
     return render_template('knockout.html', brackets=displays)
 
 @app.route('/report_knockout_result', methods=['POST'])
@@ -555,6 +573,14 @@ def report_knockout_result():
             matches[idx] = (p1, p2, 'draw' if draw else winner_id)
             break
     knockout_brackets[key] = matches
+    # mirror result in history
+    round_idx = len(knockout_history.get(key, [])) - 1
+    if round_idx >= 0:
+        hist_round = knockout_history.setdefault(key, [])[round_idx]
+        for idx, m in enumerate(hist_round):
+            if (m[0], m[1]) == (p1, p2):
+                hist_round[idx] = (p1, p2, 'draw' if draw else winner_id)
+                break
     db.session.commit()
     advance_knockout(key)
     if check_knockouts_done():
