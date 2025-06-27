@@ -19,11 +19,8 @@
                 <form method="post" action="/report_result">
                     <input type="hidden" name="player1" value="{{ match[0].id }}">
                     <input type="hidden" name="player2" value="{{ match[1].id }}">
-                    <select name="winner" required>
-                        <option value="{{ match[0].id }}">{{ match[0].name }}</option>
-                        <option value="{{ match[1].id }}">{{ match[1].name }}</option>
-                        <option value="draw">Draw</option>
-                    </select>
+                    <input type="number" name="score1" min="0" required>
+                    <input type="number" name="score2" min="0" required>
                     <button type="submit">Submit</button>
                 </form>
             {% endif %}

@@ -4,11 +4,14 @@
 {% if scores %}
 <h2>Round {{ round_no }}</h2>
 <table class="standings">
-    <tr><th>Name</th><th>Score</th><th>League</th></tr>
+    <tr><th>Name</th><th>Score</th><th>Diff</th><th>Wins</th><th>Buchholz</th><th>League</th></tr>
     {% for p in players %}
     <tr>
         <td>{{ p.name }}</td>
         <td>{{ scores[p.id] }}</td>
+        <td>{{ diff[p.id] }}</td>
+        <td>{{ wins[p.id] }}</td>
+        <td>{{ buchholz[p.id] }}</td>
         <td>{{ p.league }}</td>
     </tr>
     {% endfor %}
@@ -31,11 +34,8 @@
                 <form method="post" action="/report_swiss_result">
                     <input type="hidden" name="player1" value="{{ match[0].id }}">
                     <input type="hidden" name="player2" value="{{ match[1].id }}">
-                    <select name="winner" required>
-                        <option value="{{ match[0].id }}">{{ match[0].name }}</option>
-                        <option value="{{ match[1].id }}">{{ match[1].name }}</option>
-                        <option value="draw">Draw</option>
-                    </select>
+                    <input type="number" name="score1" min="0" required>
+                    <input type="number" name="score2" min="0" required>
                     <button type="submit">Submit</button>
                 </form>
             {% endif %}
