@@ -4,9 +4,15 @@
 {% for lg, players, matches in leagues %}
 <h2>League {{ lg }}</h2>
 <table class="standings">
-  <tr><th>Name</th><th>Wins</th></tr>
-  {% for p, sc in players %}
-  <tr><td>{{ p.name }}</td><td>{{ sc }}</td></tr>
+  <tr><th>Name</th><th>Score</th><th>Diff</th><th>Wins</th><th>SB</th></tr>
+  {% for p, sc, diff, wins, sb in players %}
+  <tr>
+    <td>{{ p.name }}</td>
+    <td>{{ sc }}</td>
+    <td>{{ diff }}</td>
+    <td>{{ wins }}</td>
+    <td>{{ sb }}</td>
+  </tr>
   {% endfor %}
 </table>
 <table class="bracket">
@@ -27,11 +33,8 @@
             <input type="hidden" name="league" value="{{ lg }}">
             <input type="hidden" name="player1" value="{{ m[0].id }}">
             <input type="hidden" name="player2" value="{{ m[1].id }}">
-            <select name="winner" required>
-                <option value="{{ m[0].id }}">{{ m[0].name }}</option>
-                <option value="{{ m[1].id }}">{{ m[1].name }}</option>
-                <option value="draw">Draw</option>
-            </select>
+            <input type="number" name="score1" min="0" required>
+            <input type="number" name="score2" min="0" required>
             <button type="submit">Submit</button>
         </form>
       {% endif %}

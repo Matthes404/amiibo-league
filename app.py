@@ -20,6 +20,12 @@ swiss_scores = {}
 swiss_previous_matches = set()
 league_matches = {}
 league_scores = {}
+swiss_diff = {}
+swiss_wins = {}
+swiss_opponents = {}
+league_diff = {}
+league_wins = {}
+league_results = {}
 knockout_brackets = {}
 knockout_remaining = {}
 knockout_history = {}
@@ -49,6 +55,8 @@ with app.app_context():
         global swiss_scores, swiss_previous_matches, league_matches
         global league_scores, knockout_brackets, knockout_remaining
         global knockout_history
+        global swiss_diff, swiss_wins, swiss_opponents
+        global league_diff, league_wins, league_results
 
         current_pairs = get_state('current_pairs', [])
         current_swiss_pairs = get_state('current_swiss_pairs', [])
@@ -56,6 +64,11 @@ with app.app_context():
 
         ss_raw = get_state('swiss_scores', {})
         swiss_scores = {int(k): v for k, v in ss_raw.items()}
+
+        swiss_diff = {int(k): v for k, v in get_state('swiss_diff', {}).items()}
+        swiss_wins = {int(k): v for k, v in get_state('swiss_wins', {}).items()}
+        so_raw = get_state('swiss_opponents', {})
+        swiss_opponents = {int(k): set(map(int, v)) for k, v in so_raw.items()}
 
         prev_raw = get_state('swiss_previous_matches', [])
         swiss_previous_matches = {tuple(map(int, p)) for p in prev_raw}
@@ -65,6 +78,13 @@ with app.app_context():
 
         ls_raw = get_state('league_scores', {})
         league_scores = {g: {int(pid): sc for pid, sc in d.items()} for g, d in ls_raw.items()}
+
+        ld_raw = get_state('league_diff', {})
+        league_diff = {g: {int(pid): val for pid, val in d.items()} for g, d in ld_raw.items()}
+        lw_raw = get_state('league_wins', {})
+        league_wins = {g: {int(pid): val for pid, val in d.items()} for g, d in lw_raw.items()}
+        lr_raw = get_state('league_results', {})
+        league_results = {int(pid): [(int(o), r) for o, r in lst] for pid, lst in lr_raw.items()}
 
         kb_raw = get_state('knockout_brackets', {})
         knockout_brackets = {k: [tuple(p) for p in ps] for k, ps in kb_raw.items()}
@@ -84,9 +104,15 @@ with app.app_context():
         set_state('current_swiss_pairs', current_swiss_pairs)
         set_state('swiss_round', swiss_round)
         set_state('swiss_scores', swiss_scores)
+        set_state('swiss_diff', swiss_diff)
+        set_state('swiss_wins', swiss_wins)
+        set_state('swiss_opponents', {k: list(v) for k, v in swiss_opponents.items()})
         set_state('swiss_previous_matches', [list(p) for p in swiss_previous_matches])
         set_state('league_matches', {g: [list(p) for p in ps] for g, ps in league_matches.items()})
         set_state('league_scores', league_scores)
+        set_state('league_diff', league_diff)
+        set_state('league_wins', league_wins)
+        set_state('league_results', {pid: [(o, r) for o, r in lst] for pid, lst in league_results.items()})
         set_state('knockout_brackets', {k: [list(p) for p in ps] for k, ps in knockout_brackets.items()})
         set_state('knockout_remaining', knockout_remaining)
         set_state('knockout_history', {
@@ -114,6 +140,13 @@ with app.app_context():
     except Exception:
         db.session.execute(text("ALTER TABLE amiibo ADD COLUMN profile_pic VARCHAR(120) DEFAULT ''"))
         db.session.commit()
+    # ensure score columns exist
+    try:
+        db.session.execute(text('SELECT score1 FROM match LIMIT 1'))
+    except Exception:
+        db.session.execute(text('ALTER TABLE match ADD COLUMN score1 INTEGER DEFAULT 0'))
+        db.session.execute(text('ALTER TABLE match ADD COLUMN score2 INTEGER DEFAULT 0'))
+        db.session.commit()
 
 @app.route('/logo/<path:filename>')
 def serve_logo(filename):
@@ -138,15 +171,21 @@ def update_elo(player1: Amiibo, player2: Amiibo, score1: float):
         if p.current_elo > p.peak_elo:
             p.peak_elo = p.current_elo
 
-def record_match(player1_id: int, player2_id: int, result: str, round_no: int | None = None) -> tuple[int | None, bool]:
+def record_match(
+    player1_id: int,
+    player2_id: int,
+    score1: int,
+    score2: int,
+    round_no: int | None = None,
+) -> tuple[int | None, bool]:
     """Apply a result and persist the match.
 
     Parameters
     ----------
     player1_id, player2_id:
         IDs of the players in the pairing order.
-    result:
-        Either the winning player ID as string or ``"draw"``.
+    score1, score2:
+        Numeric result for player1 and player2.
     round_no:
         Optional round number for Swiss/league matches.
 
@@ -158,16 +197,26 @@ def record_match(player1_id: int, player2_id: int, result: str, round_no: int | 
 
     a1 = Amiibo.query.get(player1_id)
     a2 = Amiibo.query.get(player2_id)
-    if result == 'draw':
+    if score1 == score2:
         update_elo(a1, a2, 0.5)
         winner_id = None
         draw = True
-    else:
-        winner_id = int(result)
-        score = 1 if winner_id == player1_id else 0
-        update_elo(a1, a2, score)
+    elif score1 > score2:
+        update_elo(a1, a2, 1)
+        winner_id = player1_id
         draw = False
-    match = Match(player1_id=player1_id, player2_id=player2_id, winner_id=winner_id, draw=draw)
+    else:
+        update_elo(a1, a2, 0)
+        winner_id = player2_id
+        draw = False
+    match = Match(
+        player1_id=player1_id,
+        player2_id=player2_id,
+        winner_id=winner_id,
+        draw=draw,
+        score1=score1,
+        score2=score2,
+    )
     if round_no is not None:
         match.round_no = round_no
     db.session.add(match)
@@ -360,8 +409,9 @@ def report_result():
     global current_pairs
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
-    res = request.form['winner']
-    winner_id, draw = record_match(p1, p2, res)
+    score1 = int(request.form['score1'])
+    score2 = int(request.form['score2'])
+    winner_id, draw = record_match(p1, p2, score1, score2)
     result_flag = 'draw' if draw else winner_id
     current_pairs = [ (pp1, pp2, w if (pp1, pp2) != (p1, p2) else result_flag) for pp1, pp2, w in current_pairs]
     save_all_state()
@@ -376,18 +426,42 @@ def swiss():
         return Amiibo.query.get(w) if w else None
     pairs = [(Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w)) for p1, p2, w in current_swiss_pairs]
     players = Amiibo.query.all()
-    ordered = sorted(players, key=lambda a: swiss_scores.get(a.id, 0), reverse=True)
+    buchholz = {p.id: sum(swiss_scores.get(o, 0) for o in swiss_opponents.get(p.id, [])) for p in players}
+    ordered = sorted(
+        players,
+        key=lambda a: (
+            swiss_scores.get(a.id, 0),
+            swiss_diff.get(a.id, 0),
+            swiss_wins.get(a.id, 0),
+            buchholz[a.id],
+        ),
+        reverse=True,
+    )
     done = swiss_round > 4
     current_round = min(swiss_round, 4)
-    return render_template('swiss.html', pairs=pairs, players=ordered, scores=swiss_scores, round_no=current_round, done=done)
+    return render_template(
+        'swiss.html',
+        pairs=pairs,
+        players=ordered,
+        scores=swiss_scores,
+        diff=swiss_diff,
+        wins=swiss_wins,
+        buchholz=buchholz,
+        round_no=current_round,
+        done=done,
+    )
 
 
 @app.route('/start_swiss', methods=['POST'])
 def start_swiss():
     global current_swiss_pairs, swiss_round, swiss_scores, swiss_previous_matches
+    global swiss_diff, swiss_wins, swiss_opponents
     players = Amiibo.query.order_by(Amiibo.current_elo.desc()).all()
     swiss_round = 1
     swiss_scores = {p.id: 0 for p in players}
+    swiss_diff = {p.id: 0 for p in players}
+    swiss_wins = {p.id: 0 for p in players}
+    swiss_opponents = {p.id: set() for p in players}
     swiss_previous_matches = set()
     current_swiss_pairs = generate_swiss_pairs(players, swiss_previous_matches)
     save_all_state()
@@ -397,15 +471,22 @@ def start_swiss():
 @app.route('/report_swiss_result', methods=['POST'])
 def report_swiss_result():
     global current_swiss_pairs, swiss_scores, swiss_round, swiss_previous_matches
+    global swiss_diff, swiss_wins, swiss_opponents
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
-    res = request.form['winner']
-    winner_id, draw = record_match(p1, p2, res, swiss_round)
+    score1 = int(request.form['score1'])
+    score2 = int(request.form['score2'])
+    winner_id, draw = record_match(p1, p2, score1, score2, swiss_round)
     if draw:
         swiss_scores[p1] += 0.5
         swiss_scores[p2] += 0.5
     else:
         swiss_scores[winner_id] += 1
+        swiss_wins[winner_id] += 1
+    swiss_diff[p1] += score1 - score2
+    swiss_diff[p2] += score2 - score1
+    swiss_opponents.setdefault(p1, set()).add(p2)
+    swiss_opponents.setdefault(p2, set()).add(p1)
     swiss_previous_matches.add((p1, p2))
     result_flag = 'draw' if draw else winner_id
     current_swiss_pairs = [ (pp1, pp2, w if (pp1, pp2) != (p1, p2) else result_flag) for pp1, pp2, w in current_swiss_pairs]
@@ -419,6 +500,9 @@ def report_swiss_result():
             groups = [chr(ord('A') + i) for i in range(num_groups)]
             league_matches.clear()
             league_scores.clear()
+            league_diff.clear()
+            league_wins.clear()
+            league_results.clear()
             for idx, p in enumerate(players):
                 gi = idx // 4
                 if gi >= num_groups:
@@ -426,6 +510,8 @@ def report_swiss_result():
                 league = groups[gi]
                 p.league = league
                 league_scores.setdefault(league, {})[p.id] = 0
+                league_diff.setdefault(league, {})[p.id] = 0
+                league_wins.setdefault(league, {})[p.id] = 0
             db.session.commit()
             for league in groups:
                 players_in_league = [pl for pl in players if pl.league == league]
@@ -447,8 +533,23 @@ def report_swiss_result():
 def league():
     displays = []
     for lg in sorted(league_scores.keys()):
-        players = [(Amiibo.query.get(pid), score) for pid, score in league_scores[lg].items()]
-        players.sort(key=lambda x: x[1], reverse=True)
+        scores = league_scores[lg]
+        diffs = league_diff.get(lg, {})
+        wins = league_wins.get(lg, {})
+        sb = {}
+        for pid in scores:
+            sb[pid] = sum(scores.get(op, 0) * pts for op, pts in league_results.get(pid, []))
+        players = [
+            (
+                Amiibo.query.get(pid),
+                scores[pid],
+                diffs.get(pid, 0),
+                wins.get(pid, 0),
+                sb[pid],
+            )
+            for pid in scores
+        ]
+        players.sort(key=lambda x: (x[1], x[2], x[3], x[4]), reverse=True)
         def resolve(w):
             if w == 'draw':
                 return 'Draw'
@@ -466,13 +567,19 @@ def report_league_result():
     league = request.form['league']
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
-    res = request.form['winner']
-    winner_id, draw = record_match(p1, p2, res, swiss_round)
+    score1 = int(request.form['score1'])
+    score2 = int(request.form['score2'])
+    winner_id, draw = record_match(p1, p2, score1, score2, swiss_round)
     if draw:
         league_scores[league][p1] += 0.5
         league_scores[league][p2] += 0.5
     else:
         league_scores[league][winner_id] += 1
+        league_wins[league][winner_id] += 1
+    league_diff[league][p1] += score1 - score2
+    league_diff[league][p2] += score2 - score1
+    league_results.setdefault(p1, []).append((p2, 1 if winner_id == p1 else 0.5 if draw else 0))
+    league_results.setdefault(p2, []).append((p1, 1 if winner_id == p2 else 0.5 if draw else 0))
     matches = league_matches.get(league, [])
     for idx, m in enumerate(matches):
         if (m[0], m[1]) == (p1, p2):
@@ -489,9 +596,23 @@ def promote_and_relegate():
     rankings = {}
     for g in groups:
         scores = league_scores.get(g, {})
-        ordered = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        diffs = league_diff.get(g, {})
+        wins = league_wins.get(g, {})
+        sb = {}
+        for pid in scores:
+            sb[pid] = sum(scores.get(op, 0) * pts for op, pts in league_results.get(pid, []))
+        ordered = sorted(
+            scores.keys(),
+            key=lambda pid: (
+                scores[pid],
+                diffs.get(pid, 0),
+                wins.get(pid, 0),
+                sb[pid],
+            ),
+            reverse=True,
+        )
         if ordered:
-            rankings[g] = [pid for pid, _ in ordered]
+            rankings[g] = list(ordered)
     promotions = {}
     relegations = {}
     for i, g in enumerate(groups):
@@ -511,6 +632,9 @@ def promote_and_relegate():
 def setup_league_matches():
     league_matches.clear()
     league_scores.clear()
+    league_diff.clear()
+    league_wins.clear()
+    league_results.clear()
     players = Amiibo.query.all()
     groups = sorted(set(p.league for p in players if p.league))
     if not groups:
@@ -532,6 +656,8 @@ def setup_league_matches():
     for g in groups:
         pls = [p for p in players if p.league == g]
         league_scores[g] = {p.id: 0 for p in pls}
+        league_diff[g] = {p.id: 0 for p in pls}
+        league_wins[g] = {p.id: 0 for p in pls}
         matches = []
         for i in range(len(pls)):
             for j in range(i+1, len(pls)):
@@ -633,8 +759,9 @@ def report_knockout_result():
     key = request.form['bracket']
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
-    res = request.form['winner']
-    winner_id, draw = record_match(p1, p2, res)
+    score1 = int(request.form['score1'])
+    score2 = int(request.form['score2'])
+    winner_id, draw = record_match(p1, p2, score1, score2)
     matches = knockout_brackets.get(key, [])
     for idx, m in enumerate(matches):
         if (m[0], m[1]) == (p1, p2):

@@ -24,11 +24,8 @@
               <input type="hidden" name="bracket" value="{{ key }}">
               <input type="hidden" name="player1" value="{{ m[0].id }}">
               <input type="hidden" name="player2" value="{{ m[1].id }}">
-              <select name="winner" required>
-                <option value="{{ m[0].id }}">{{ m[0].name }}</option>
-                <option value="{{ m[1].id }}">{{ m[1].name }}</option>
-                <option value="draw">Draw</option>
-              </select>
+              <input type="number" name="score1" min="0" required>
+              <input type="number" name="score2" min="0" required>
               <button type="submit">Submit</button>
             </form>
           {% endif %}

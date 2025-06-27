@@ -67,6 +67,8 @@ class Match(db.Model):
     winner_id = db.Column(db.Integer, db.ForeignKey('amiibo.id'), nullable=True)
     draw = db.Column(db.Boolean, default=False)
     round_no = db.Column(db.Integer, default=1)
+    score1 = db.Column(db.Integer, default=0)
+    score2 = db.Column(db.Integer, default=0)
 
 
 class State(db.Model):
