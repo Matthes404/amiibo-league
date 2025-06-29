@@ -786,7 +786,11 @@ def report_knockout_result():
     matches = knockout_brackets.get(key, [])
     for idx, m in enumerate(matches):
         if (m[0], m[1]) == (p1, p2):
-            matches[idx] = (p1, p2, 'draw' if draw else winner_id)
+            if draw:
+                # keep the draw in history but schedule a rematch
+                matches[idx] = (p1, p2, None)
+            else:
+                matches[idx] = (p1, p2, winner_id)
             break
     knockout_brackets[key] = matches
     # mirror result in history
@@ -796,6 +800,9 @@ def report_knockout_result():
         for idx, m in enumerate(hist_round):
             if (m[0], m[1]) == (p1, p2):
                 hist_round[idx] = (p1, p2, 'draw' if draw else winner_id)
+                if draw:
+                    # add a new entry for the rematch immediately after
+                    hist_round.insert(idx + 1, (p1, p2, None))
                 break
     db.session.commit()
     advance_knockout(key)
