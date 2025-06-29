@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, send_from_directory
 from sqlalchemy import text
 from models import db, Amiibo, Match, State
+from models import Season
 from werkzeug.utils import secure_filename
 import os
 import random
@@ -726,6 +727,26 @@ def check_knockouts_done():
             return False
     return True
 
+def archive_current_season():
+    """Store league standings and knockout history for the completed season."""
+    league_serial = {
+        'scores': league_scores,
+        'diff': league_diff,
+        'wins': league_wins,
+        'results': {pid: [(o, r) for o, r in lst] for pid, lst in league_results.items()},
+        'matches': {g: [list(p) for p in ps] for g, ps in league_matches.items()},
+    }
+    knockout_serial = {
+        'history': {k: [[list(p) for p in rnd] for rnd in rounds] for k, rounds in knockout_history.items()},
+        'winners': knockout_remaining,
+    }
+    season = Season(
+        league_data=json.dumps(league_serial),
+        knockout_data=json.dumps(knockout_serial),
+    )
+    db.session.add(season)
+    db.session.commit()
+
 @app.route('/finish_league', methods=['POST'])
 def finish_league():
     promote_and_relegate()
@@ -779,9 +800,71 @@ def report_knockout_result():
     db.session.commit()
     advance_knockout(key)
     if check_knockouts_done():
+        archive_current_season()
         setup_league_matches()
     save_all_state()
     return redirect('/knockout')
+
+
+@app.route('/seasons', methods=['GET'])
+def seasons_view():
+    """Display archived results of past seasons."""
+    items = []
+    for s in Season.query.order_by(Season.id.desc()).all():
+        league = json.loads(s.league_data)
+        knockout = json.loads(s.knockout_data)
+        leagues_disp = []
+        scores = league.get('scores', {})
+        diffs = league.get('diff', {})
+        wins = league.get('wins', {})
+        results = {
+            int(pid): [(int(o), r) for o, r in lst]
+            for pid, lst in league.get('results', {}).items()
+        }
+        for lg in sorted(scores.keys()):
+            sc = {int(pid): val for pid, val in scores[lg].items()}
+            df = {int(pid): diffs.get(lg, {}).get(pid, 0) for pid in sc}
+            wn = {int(pid): wins.get(lg, {}).get(pid, 0) for pid in sc}
+            sb = {}
+            for pid in sc:
+                sb[pid] = sum(sc.get(op, 0) * pts for op, pts in results.get(pid, []))
+            players = [
+                (Amiibo.query.get(pid), sc[pid], df[pid], wn[pid], sb[pid])
+                for pid in sc
+            ]
+            players.sort(key=lambda x: (x[1], x[2], x[3], x[4]), reverse=True)
+            def resolve(w):
+                if w == 'draw':
+                    return 'Draw'
+                return Amiibo.query.get(w) if w else None
+            matches = [
+                (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
+                for p1, p2, w in league.get('matches', {}).get(lg, [])
+            ]
+            leagues_disp.append((lg, players, matches))
+
+        brackets = {}
+        history = knockout.get('history', {})
+        winners = knockout.get('winners', {})
+        def resolve(w):
+            if w == 'draw':
+                return 'Draw'
+            return Amiibo.query.get(w) if w else None
+        for key, rounds in history.items():
+            rounds_disp = []
+            for pairs in rounds:
+                rounds_disp.append([
+                    (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
+                    for p1, p2, w in pairs
+                ])
+            win = None
+            if key in winners and winners[key]:
+                win = Amiibo.query.get(winners[key][0])
+            brackets[key] = {'rounds': rounds_disp, 'winner': win}
+
+        items.append({'id': s.id, 'leagues': leagues_disp, 'brackets': brackets})
+
+    return render_template('seasons.html', seasons=items)
 
 if __name__ == '__main__':
     app.run(debug=True)
