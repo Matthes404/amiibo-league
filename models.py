@@ -77,3 +77,11 @@ class State(db.Model):
     key = db.Column(db.String(50), primary_key=True)
     value = db.Column(db.Text)
 
+
+class Season(db.Model):
+    """Archive data for a completed season."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    league_data = db.Column(db.Text)
+    knockout_data = db.Column(db.Text)
+
