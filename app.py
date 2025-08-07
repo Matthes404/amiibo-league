@@ -614,6 +614,13 @@ def promote_and_relegate():
         )
         if ordered:
             rankings[g] = list(ordered)
+    # Award league titles to the top player in each group
+    for g, rank in rankings.items():
+        if rank:
+            champ = Amiibo.query.get(rank[0])
+            champ.league_titles = (
+                (champ.league_titles + ',' if champ.league_titles else '') + g
+            )
     promotions = {}
     relegations = {}
     for i, g in enumerate(groups):

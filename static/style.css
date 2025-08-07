@@ -72,6 +72,13 @@ table, th, td {
     text-align: left;
 }
 
+.leaderboard th.titles,
+.leaderboard td.titles {
+    white-space: nowrap;
+    max-width: 80px;
+    overflow-x: auto;
+}
+
 button {
     background: var(--accent-color);
     color: #fff;
