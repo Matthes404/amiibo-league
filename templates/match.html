@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Match</h1>
+<form method="post" action="/report_match" class="match-form">
+    <label for="player1">Player 1:</label>
+    <select name="player1" id="player1" required>
+        {% for p in players %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select>
+    <label for="player2">Player 2:</label>
+    <select name="player2" id="player2" required>
+        {% for p in players %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select>
+    <input type="number" name="score1" min="0" required>
+    <input type="number" name="score2" min="0" required>
+    <button type="submit">Submit</button>
+</form>
+{% if pairs %}
+<table class="bracket">
+    <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
+    {% for match in pairs %}
+    <tr>
+        <td>{{ match[0].name }}</td>
+        <td>{{ match[1].name }}</td>
+        <td>
+            {% if match[2] %}
+                {% if match[2] == 'Draw' %}
+                    Draw
+                {% else %}
+                    {{ match[2].name }}
+                {% endif %}
+            {% else %}
+                -
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+{% endblock %}
