@@ -671,18 +671,21 @@ def setup_knockouts():
     knockout_remaining.clear()
     knockout_history.clear()
     players = Amiibo.query.filter_by(waiting=False).all()
-    groups = sorted(set(p.league for p in players))
+    players_by_group = {}
+    for p in players:
+        players_by_group.setdefault(p.league, []).append(p)
+    groups = sorted([g for g, ps in players_by_group.items() if len(ps) == 4])
     i = 0
     while i < len(groups):
         g1 = groups[i]
-        g2 = groups[i+1] if i + 1 < len(groups) else None
+        g2 = groups[i + 1] if i + 1 < len(groups) else None
         if g2:
             key = g1 + g2
-            contestants = [p for p in players if p.league in (g1, g2)]
+            contestants = players_by_group[g1] + players_by_group[g2]
             i += 2
         else:
             key = g1
-            contestants = [p for p in players if p.league == g1]
+            contestants = players_by_group[g1]
             i += 1
         random.shuffle(contestants)
         knockout_remaining[key] = [p.id for p in contestants]
