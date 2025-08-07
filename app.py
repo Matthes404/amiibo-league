@@ -840,34 +840,14 @@ def seasons_view():
                 for pid in sc
             ]
             players.sort(key=lambda x: (x[1], x[2], x[3], x[4]), reverse=True)
-            def resolve(w):
-                if w == 'draw':
-                    return 'Draw'
-                return Amiibo.query.get(w) if w else None
-            matches = [
-                (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
-                for p1, p2, w in league.get('matches', {}).get(lg, [])
-            ]
-            leagues_disp.append((lg, players, matches))
+            winner = players[0][0] if players else None
+            leagues_disp.append((lg, winner))
 
         brackets = {}
-        history = knockout.get('history', {})
         winners = knockout.get('winners', {})
-        def resolve(w):
-            if w == 'draw':
-                return 'Draw'
-            return Amiibo.query.get(w) if w else None
-        for key, rounds in history.items():
-            rounds_disp = []
-            for pairs in rounds:
-                rounds_disp.append([
-                    (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
-                    for p1, p2, w in pairs
-                ])
-            win = None
-            if key in winners and winners[key]:
-                win = Amiibo.query.get(winners[key][0])
-            brackets[key] = {'rounds': rounds_disp, 'winner': win}
+        for key, w in winners.items():
+            win = Amiibo.query.get(w[0]) if w else None
+            brackets[key] = win
 
         items.append({'id': s.id, 'leagues': leagues_disp, 'brackets': brackets})
 

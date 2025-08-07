@@ -1,68 +1,18 @@
 {% extends 'base.html' %}
 {% block content %}
 <h1>Past Seasons</h1>
-{% for season in seasons %}
-  <h2>Season {{ season.id }}</h2>
-  {% for lg, players, matches in season.leagues %}
-    <h3>League {{ lg }}</h3>
-    <table class="standings">
-      <tr><th>Name</th><th>Score</th><th>Diff</th><th>Wins</th><th>SB</th></tr>
-      {% for p, sc, diff, wins, sb in players %}
-      <tr>
-        <td>{{ p.name }}</td>
-        <td>{{ sc }}</td>
-        <td>{{ diff }}</td>
-        <td>{{ wins }}</td>
-        <td>{{ sb }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-    <table class="bracket">
-      <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
-      {% for m in matches %}
-      <tr>
-        <td>{{ m[0].name }}</td>
-        <td>{{ m[1].name }}</td>
-        <td>
-          {% if m[2] %}
-            {% if m[2] == 'Draw' %}
-              Draw
-            {% else %}
-              {{ m[2].name }}
-            {% endif %}
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
-  {% endfor %}
-  {% for key, data in season.brackets.items() %}
-    <h3>Bracket {{ key }}</h3>
-    {% for pairs in data.rounds %}
-      <h4>Round {{ loop.index }}</h4>
-      <table class="bracket">
-        <tr><th>Player 1</th><th>Player 2</th><th>Winner</th></tr>
-        {% for m in pairs %}
-        <tr>
-          <td>{{ m[0].name }}</td>
-          <td>{{ m[1].name }}</td>
-          <td>
-            {% if m[2] %}
-              {% if m[2] == 'Draw' %}
-                Draw
-              {% else %}
-                {{ m[2].name }}
-              {% endif %}
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
+  {% for season in seasons %}
+    <h2>Season {{ season.id }}</h2>
+    {% for lg, winner in season.leagues %}
+      {% if winner %}
+        <p>League {{ lg }} winner: {{ winner.name }}</p>
+      {% endif %}
     {% endfor %}
-    {% if data.winner %}
-      <p>Winner: {{ data.winner.name }}</p>
-    {% endif %}
+    {% for key, winner in season.brackets.items() %}
+      {% if winner %}
+        <p>K.O. {{ key }} winner: {{ winner.name }}</p>
+      {% endif %}
+    {% endfor %}
   {% endfor %}
-{% endfor %}
-{% endblock %}
+  {% endblock %}
 
