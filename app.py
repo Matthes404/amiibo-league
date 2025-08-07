@@ -384,39 +384,26 @@ def league_cycle_running() -> bool:
     """Return True if Swiss, league or knockout is active."""
     return swiss_round > 0 or bool(league_matches) or bool(knockout_brackets)
 
-@app.route('/tournament', methods=['GET'])
-def tournament():
-    def resolve(w):
-        if w == 'draw':
+@app.route('/match', methods=['GET'])
+def match():
+    players = Amiibo.query.order_by(Amiibo.name).all()
+    def resolve(m):
+        if m.draw:
             return 'Draw'
-        return Amiibo.query.get(w) if w else None
-    pairs = [(Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w)) for p1, p2, w in current_pairs]
-    return render_template('tournament.html', pairs=pairs)
+        return Amiibo.query.get(m.winner_id) if m.winner_id else None
+    recent = Match.query.order_by(Match.id.desc()).limit(10).all()
+    pairs = [(Amiibo.query.get(m.player1_id), Amiibo.query.get(m.player2_id), resolve(m)) for m in recent]
+    return render_template('match.html', players=players, pairs=pairs)
 
-@app.route('/start_tournament', methods=['POST'])
-def start_tournament():
-    global current_pairs
-    players = Amiibo.query.order_by(Amiibo.current_elo.desc()).limit(8).all()
-    random.shuffle(players)
-    current_pairs = []
-    for i in range(0, len(players), 2):
-        if i+1 < len(players):
-            current_pairs.append((players[i].id, players[i+1].id, None))
-    save_all_state()
-    return redirect('/tournament')
-
-@app.route('/report_result', methods=['POST'])
-def report_result():
-    global current_pairs
+@app.route('/report_match', methods=['POST'])
+def report_match():
     p1 = int(request.form['player1'])
     p2 = int(request.form['player2'])
     score1 = int(request.form['score1'])
     score2 = int(request.form['score2'])
-    winner_id, draw = record_match(p1, p2, score1, score2)
-    result_flag = 'draw' if draw else winner_id
-    current_pairs = [ (pp1, pp2, w if (pp1, pp2) != (p1, p2) else result_flag) for pp1, pp2, w in current_pairs]
+    record_match(p1, p2, score1, score2)
     save_all_state()
-    return redirect('/tournament')
+    return redirect('/match')
 
 
 @app.route('/swiss', methods=['GET'])
