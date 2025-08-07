@@ -9,6 +9,7 @@ class Amiibo(db.Model):
     peak_elo = db.Column(db.Integer, default=1500)
     league = db.Column(db.String(20), default="")
     ko_titles = db.Column(db.String(120), default="")
+    league_titles = db.Column(db.String(120), default="")
     waiting = db.Column(db.Boolean, default=False)
     profile_pic = db.Column(db.String(120), default="")
 
