@@ -7,11 +7,11 @@
     {% for round in data.rounds %}
       {% if round %}
       <div class="round">
-        {% for pair in round|batch(2, None) %}
-        <div class="pair">
-          {% for m in pair %}
+        {% for pair in round %}
+        <div class="pair{% if pair.highlight %} winner-path{% endif %}">
+          {% for m in pair.matches %}
             {% if m %}
-            <div class="match">
+            <div class="match{% if m[3] %} winner-path{% endif %}">
               <div class="player">{{ m[0].name }}</div>
               <div class="player">{{ m[1].name }}</div>
               <div class="result">
@@ -41,8 +41,5 @@
       {% endif %}
     {% endfor %}
   </div>
-  {% if data.winner %}
-    <p class="champion">Winner: {{ data.winner.name }}</p>
-  {% endif %}
 {% endfor %}
 {% endblock %}

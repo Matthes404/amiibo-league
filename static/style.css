@@ -242,6 +242,20 @@ body.dark-mode {
     margin-top: 0.5em;
 }
 
+.ko-bracket .match.winner-path {
+    border-color: gold;
+}
+
+.ko-bracket .match.winner-path .player {
+    color: gold;
+}
+
+.ko-bracket .pair.winner-path::before,
+.ko-bracket .pair.winner-path::after,
+.ko-bracket .match.winner-path::after {
+    border-color: gold;
+}
+
 .profile-layout {
     display: flex;
     gap: 1em;

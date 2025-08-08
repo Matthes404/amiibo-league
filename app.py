@@ -806,23 +806,39 @@ def finish_league():
 @app.route('/knockout', methods=['GET'])
 def knockout():
     displays = {}
+
     def resolve(w):
         if w == 'draw':
             return 'Draw'
         return Amiibo.query.get(w) if w else None
 
     for key, rounds in knockout_history.items():
-        rounds_disp = []
-        for pairs in rounds:
-            pairs_disp = [
-                (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
-                for p1, p2, w in pairs
-            ]
-            rounds_disp.append(pairs_disp)
         winner = None
         if not knockout_brackets.get(key) and knockout_remaining.get(key):
             winner = Amiibo.query.get(knockout_remaining[key][0])
-        displays[key] = {'rounds': rounds_disp, 'winner': winner}
+
+        rounds_disp = []
+        for matches in rounds:
+            pair_list = []
+            for i in range(0, len(matches), 2):
+                match_items = []
+                pair_highlight = False
+                for j in range(2):
+                    if i + j < len(matches):
+                        p1, p2, w = matches[i + j]
+                        p1_obj = Amiibo.query.get(p1)
+                        p2_obj = Amiibo.query.get(p2)
+                        w_obj = resolve(w)
+                        highlight = bool(winner and getattr(w_obj, 'id', None) == winner.id)
+                        match_items.append((p1_obj, p2_obj, w_obj, highlight))
+                        pair_highlight = pair_highlight or highlight
+                    else:
+                        match_items.append(None)
+                pair_list.append({'matches': match_items, 'highlight': pair_highlight})
+            rounds_disp.append(pair_list)
+
+        displays[key] = {'rounds': rounds_disp}
+
     return render_template('knockout.html', brackets=displays)
 
 @app.route('/report_knockout_result', methods=['POST'])
