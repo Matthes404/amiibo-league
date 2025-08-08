@@ -491,7 +491,23 @@ def report_swiss_result():
     if all(w for _,_,w in current_swiss_pairs):
         if swiss_round >= 4:
             swiss_round += 1
-            players = sorted(Amiibo.query.all(), key=lambda a: swiss_scores.get(a.id, 0), reverse=True)
+            players = Amiibo.query.all()
+            buchholz = {
+                p.id: sum(
+                    swiss_scores.get(o, 0) for o in swiss_opponents.get(p.id, [])
+                )
+                for p in players
+            }
+            players = sorted(
+                players,
+                key=lambda a: (
+                    swiss_scores.get(a.id, 0),
+                    swiss_diff.get(a.id, 0),
+                    swiss_wins.get(a.id, 0),
+                    buchholz[a.id],
+                ),
+                reverse=True,
+            )
             total = len(players)
             num_groups = (total + 3) // 4
             groups = [chr(ord('A') + i) for i in range(num_groups)]
