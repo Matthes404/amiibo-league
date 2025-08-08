@@ -12,16 +12,27 @@
           {% for m in pair.matches %}
             {% if m %}
             <div class="match{% if m[3] %} winner-path{% endif %}">
-              <div class="player">{{ m[0].name }}</div>
-              <div class="player">{{ m[1].name }}</div>
-              <div class="result">
-                {% if m[2] %}
-                  {% if m[2] == 'Draw' %}
-                    Draw
-                  {% else %}
-                    {{ m[2].name }}
+              {% set p1_class = '' %}
+              {% set p2_class = '' %}
+              {% if m[2] and m[2] != 'Draw' %}
+                {% if m[2].id == m[0].id %}
+                  {% set p1_class = ' winner' %}
+                  {% set p2_class = ' loser' %}
+                  {% if m[3] %}
+                    {% set p1_class = p1_class + ' champion' %}
                   {% endif %}
                 {% else %}
+                  {% set p1_class = ' loser' %}
+                  {% set p2_class = ' winner' %}
+                  {% if m[3] %}
+                    {% set p2_class = p2_class + ' champion' %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+              <div class="player{{ p1_class }}">{{ m[0].name }}</div>
+              <div class="player{{ p2_class }}">{{ m[1].name }}</div>
+              <div class="result">
+                {% if not m[2] %}
                   <form method="post" action="/report_knockout_result">
                     <input type="hidden" name="bracket" value="{{ key }}">
                     <input type="hidden" name="player1" value="{{ m[0].id }}">
@@ -30,6 +41,8 @@
                     <input type="number" name="score2" min="0" required>
                     <button type="submit">Submit</button>
                   </form>
+                {% elif m[2] == 'Draw' %}
+                  Draw
                 {% endif %}
               </div>
             </div>
