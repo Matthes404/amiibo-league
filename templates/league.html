@@ -15,7 +15,7 @@
   </tr>
   {% endfor %}
 </table>
-<div class="round-tabs">
+<div class="round-tabs" data-league="{{ lg }}">
   <div class="tab-links">
     {% for rnd, _ in rounds %}
       <button type="button"
@@ -62,6 +62,19 @@
 </form>
 <script>
 document.querySelectorAll('.round-tabs').forEach(function(tabs){
+  const leagueId = tabs.dataset.league;
+  const storageKey = 'league-' + leagueId + '-round';
+  const saved = localStorage.getItem(storageKey);
+  if (saved) {
+    const savedBtn = tabs.querySelector('.tab-link[data-target="' + saved + '"]');
+    const savedContent = tabs.querySelector('#' + saved);
+    if (savedBtn && savedContent) {
+      tabs.querySelectorAll('.tab-content').forEach(function(tc){ tc.classList.add('hidden'); });
+      tabs.querySelectorAll('.tab-link').forEach(function(b){ b.classList.remove('active'); });
+      savedContent.classList.remove('hidden');
+      savedBtn.classList.add('active');
+    }
+  }
   tabs.querySelectorAll('.tab-link').forEach(function(btn){
     btn.addEventListener('click', function(){
       const target = this.dataset.target;
@@ -69,6 +82,7 @@ document.querySelectorAll('.round-tabs').forEach(function(tabs){
       tabs.querySelectorAll('.tab-link').forEach(function(b){ b.classList.remove('active'); });
       tabs.querySelector('#'+target).classList.remove('hidden');
       this.classList.add('active');
+      localStorage.setItem(storageKey, target);
     });
   });
 });
