@@ -175,6 +175,35 @@ body.dark-mode {
     margin: 0 auto 1em auto;
 }
 
+/* Knockout bracket layout */
+.ko-bracket {
+    display: flex;
+    gap: 2em;
+    overflow-x: auto;
+    margin-bottom: 1em;
+}
+
+.ko-bracket .round {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
+.ko-bracket .match {
+    border: 1px solid var(--border-color);
+    padding: 0.5em;
+    background: #222;
+    min-width: 180px;
+}
+
+.ko-bracket .match .player {
+    font-weight: bold;
+}
+
+.ko-bracket .match .result {
+    margin-top: 0.5em;
+}
+
 .profile-layout {
     display: flex;
     gap: 1em;
