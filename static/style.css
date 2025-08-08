@@ -238,16 +238,24 @@ body.dark-mode {
     font-weight: bold;
 }
 
+.ko-bracket .match .player.winner {
+    color: #32cd32;
+}
+
+.ko-bracket .match .player.loser {
+    color: #d92323;
+}
+
+.ko-bracket .match .player.champion {
+    color: gold;
+}
+
 .ko-bracket .match .result {
     margin-top: 0.5em;
 }
 
 .ko-bracket .match.winner-path {
     border-color: gold;
-}
-
-.ko-bracket .match.winner-path .player {
-    color: gold;
 }
 
 .ko-bracket .pair.winner-path::before,
