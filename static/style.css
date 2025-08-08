@@ -211,3 +211,29 @@ body.dark-mode {
     height: auto;
     border: 2px solid var(--accent-color);
 }
+
+.hidden {
+    display: none;
+}
+
+.round-tabs {
+    margin-bottom: 1em;
+}
+
+.tab-links {
+    margin-bottom: 0.5em;
+}
+
+.tab-link {
+    background: var(--header-bg);
+    color: var(--link-color);
+    border: 1px solid var(--border-color);
+    margin-right: 0.5em;
+    padding: 0.25em 0.5em;
+    cursor: pointer;
+}
+
+.tab-link.active {
+    background: var(--accent-color);
+    color: #fff;
+}

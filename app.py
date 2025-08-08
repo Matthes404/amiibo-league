@@ -75,7 +75,10 @@ with app.app_context():
         swiss_previous_matches = {tuple(map(int, p)) for p in prev_raw}
 
         lm_raw = get_state('league_matches', {})
-        league_matches = {g: [tuple(p) for p in ps] for g, ps in lm_raw.items()}
+        league_matches = {
+            g: {int(r): [tuple(p) for p in ms] for r, ms in rounds.items()}
+            for g, rounds in lm_raw.items()
+        }
 
         ls_raw = get_state('league_scores', {})
         league_scores = {g: {int(pid): sc for pid, sc in d.items()} for g, d in ls_raw.items()}
@@ -109,7 +112,13 @@ with app.app_context():
         set_state('swiss_wins', swiss_wins)
         set_state('swiss_opponents', {k: list(v) for k, v in swiss_opponents.items()})
         set_state('swiss_previous_matches', [list(p) for p in swiss_previous_matches])
-        set_state('league_matches', {g: [list(p) for p in ps] for g, ps in league_matches.items()})
+        set_state(
+            'league_matches',
+            {
+                g: {r: [list(p) for p in ms] for r, ms in rounds.items()}
+                for g, rounds in league_matches.items()
+            },
+        )
         set_state('league_scores', league_scores)
         set_state('league_diff', league_diff)
         set_state('league_wins', league_wins)
@@ -503,11 +512,21 @@ def report_swiss_result():
             db.session.commit()
             for league in groups:
                 players_in_league = [pl for pl in players if pl.league == league]
-                matches = []
-                for i in range(len(players_in_league)):
-                    for j in range(i+1, len(players_in_league)):
-                        matches.append((players_in_league[i].id, players_in_league[j].id, None))
-                league_matches[league] = matches
+                ids = [pl.id for pl in players_in_league]
+                rounds = {}
+                if len(ids) % 2 == 1:
+                    ids.append(None)
+                n = len(ids)
+                for r in range(n - 1):
+                    pairings = []
+                    for i in range(n // 2):
+                        p1 = ids[i]
+                        p2 = ids[n - 1 - i]
+                        if p1 is not None and p2 is not None:
+                            pairings.append((p1, p2, None))
+                    rounds[r + 1] = pairings
+                    ids = [ids[0]] + [ids[-1]] + ids[1:-1]
+                league_matches[league] = rounds
             current_swiss_pairs = []
         else:
             swiss_round += 1
@@ -542,11 +561,15 @@ def league():
             if w == 'draw':
                 return 'Draw'
             return Amiibo.query.get(w) if w else None
-        matches = [
-            (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
-            for p1, p2, w in league_matches.get(lg, [])
-        ]
-        displays.append((lg, players, matches))
+        rounds = []
+        lg_matches = league_matches.get(lg, {})
+        for rnd in sorted(lg_matches.keys()):
+            mlist = [
+                (Amiibo.query.get(p1), Amiibo.query.get(p2), resolve(w))
+                for p1, p2, w in lg_matches[rnd]
+            ]
+            rounds.append((rnd, mlist))
+        displays.append((lg, players, rounds))
     return render_template('league.html', leagues=displays)
 
 
@@ -557,7 +580,8 @@ def report_league_result():
     p2 = int(request.form['player2'])
     score1 = int(request.form['score1'])
     score2 = int(request.form['score2'])
-    winner_id, draw = record_match(p1, p2, score1, score2, swiss_round)
+    round_no = int(request.form['round'])
+    winner_id, draw = record_match(p1, p2, score1, score2, round_no)
     if draw:
         league_scores[league][p1] += 0.5
         league_scores[league][p2] += 0.5
@@ -568,12 +592,12 @@ def report_league_result():
     league_diff[league][p2] += score2 - score1
     league_results.setdefault(p1, []).append((p2, 1 if winner_id == p1 else 0.5 if draw else 0))
     league_results.setdefault(p2, []).append((p1, 1 if winner_id == p2 else 0.5 if draw else 0))
-    matches = league_matches.get(league, [])
+    matches = league_matches.get(league, {}).get(round_no, [])
     for idx, m in enumerate(matches):
         if (m[0], m[1]) == (p1, p2):
             matches[idx] = (p1, p2, 'draw' if draw else winner_id)
             break
-    league_matches[league] = matches
+    league_matches.setdefault(league, {})[round_no] = matches
     # match stored via record_match
     save_all_state()
     return redirect('/league')
@@ -653,11 +677,21 @@ def setup_league_matches():
         league_scores[g] = {p.id: 0 for p in pls}
         league_diff[g] = {p.id: 0 for p in pls}
         league_wins[g] = {p.id: 0 for p in pls}
-        matches = []
-        for i in range(len(pls)):
-            for j in range(i+1, len(pls)):
-                matches.append((pls[i].id, pls[j].id, None))
-        league_matches[g] = matches
+        ids = [p.id for p in pls]
+        rounds = {}
+        if len(ids) % 2 == 1:
+            ids.append(None)
+        n = len(ids)
+        for r in range(n - 1):
+            pairings = []
+            for i in range(n // 2):
+                p1 = ids[i]
+                p2 = ids[n - 1 - i]
+                if p1 is not None and p2 is not None:
+                    pairings.append((p1, p2, None))
+            rounds[r + 1] = pairings
+            ids = [ids[0]] + [ids[-1]] + ids[1:-1]
+        league_matches[g] = rounds
     save_all_state()
 
 def setup_knockouts():
@@ -731,7 +765,10 @@ def archive_current_season():
         'diff': league_diff,
         'wins': league_wins,
         'results': {pid: [(o, r) for o, r in lst] for pid, lst in league_results.items()},
-        'matches': {g: [list(p) for p in ps] for g, ps in league_matches.items()},
+        'matches': {
+            g: {r: [list(p) for p in ms] for r, ms in rounds.items()}
+            for g, rounds in league_matches.items()
+        },
     }
     knockout_serial = {
         'history': {k: [[list(p) for p in rnd] for rnd in rounds] for k, rounds in knockout_history.items()},
