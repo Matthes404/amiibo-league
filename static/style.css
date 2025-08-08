@@ -178,7 +178,8 @@ body.dark-mode {
 /* Knockout bracket layout */
 .ko-bracket {
     display: flex;
-    gap: 2em;
+    justify-content: center;
+    gap: 4em;
     overflow-x: auto;
     margin-bottom: 1em;
 }
@@ -186,7 +187,34 @@ body.dark-mode {
 .ko-bracket .round {
     display: flex;
     flex-direction: column;
-    gap: 1em;
+    justify-content: center;
+    gap: 2em;
+}
+
+.ko-bracket .pair {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2em;
+    padding-right: 2em;
+}
+
+.ko-bracket .pair::before {
+    content: "";
+    position: absolute;
+    right: 1em;
+    top: 25%;
+    bottom: 25%;
+    border-right: 2px solid var(--border-color);
+}
+
+.ko-bracket .pair::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 1em;
+    border-top: 2px solid var(--border-color);
 }
 
 .ko-bracket .match {
@@ -194,6 +222,16 @@ body.dark-mode {
     padding: 0.5em;
     background: #222;
     min-width: 180px;
+    position: relative;
+}
+
+.ko-bracket .pair .match::after {
+    content: "";
+    position: absolute;
+    right: -1em;
+    top: 50%;
+    width: 1em;
+    border-top: 2px solid var(--border-color);
 }
 
 .ko-bracket .match .player {
